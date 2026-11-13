@@ -1,0 +1,103 @@
+/*
+ * Feedback question, footer variant A (Peter, 2026-11-13; docs/footer.md): one low row under Matomo's pager, separated
+ * by a hairline: question (ends with an ellipsis when it does not fit), borderless thumbs, and at the end a quiet grey
+ * support link with a help icon. The row never wraps, also in narrow dashboard widgets. After a vote the thanks takes the
+ * place of question and thumbs. Colours are Matomo's CSS custom properties with light fallbacks (no Matomo LESS
+ * variables: the 5.x line allows Matomo 5.0).
+ */
+.fwcs-feedback {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0 0;
+    padding: 8px 0 2px;
+    border-top: 1px solid var(--theme-color-border-alternative, var(--theme-color-border, #e3e3e3));
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--theme-color-text-lighter, #646464);
+}
+
+.fwcs-feedback__question {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.fwcs-feedback__thumb {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    padding: 1px 2px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--theme-color-text-lighter, #646464);
+    line-height: 1;
+    cursor: pointer;
+}
+
+.fwcs-feedback__thumb svg,
+.fwcs-feedback__support svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.fwcs-feedback__thumb:hover,
+.fwcs-feedback__thumb:focus-visible {
+    color: var(--theme-color-brand, #43a047);
+}
+
+.fwcs-feedback__thumb:focus-visible,
+.fwcs-feedback__support:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring, #0969da);
+    outline-offset: 2px;
+}
+
+.fwcs-feedback__icon--down {
+    transform: rotate(180deg);
+}
+
+/* after a vote: the thanks replaces question and thumbs in the same row */
+.fwcs-feedback.is-voted .fwcs-feedback__question,
+.fwcs-feedback.is-voted .fwcs-feedback__thumb {
+    display: none;
+}
+
+.fwcs-feedback__thanks {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--theme-color-text-light, #444);
+}
+
+/* stays in the document while empty (so screen readers announce the thanks), but takes no room */
+.fwcs-feedback__thanks:empty {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+}
+
+.fwcs-feedback__support {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: auto;
+    color: var(--theme-color-text-lighter, #646464);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.fwcs-feedback__support:hover,
+.fwcs-feedback__support:focus-visible {
+    color: var(--theme-color-link, #1976d2);
+}

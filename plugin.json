@@ -1,0 +1,33 @@
+{
+    "name": "FeinwerkCampaignScore",
+    "description": "Check how clean your campaign tracking is: find spelling variants, unknown mediums and missing sources in your Matomo campaign reports.",
+    "version": "5.2.0",
+    "theme": false,
+    "require": {
+        "matomo": ">=5.0.0,<6.0.0-b1",
+        "php": ">=8.1.0"
+    },
+    "authors": [
+        {
+            "name": "Peter Boehlke, Feinwerk.io",
+            "email": "support@feinwerk.io",
+            "homepage": "https://feinwerk.io"
+        }
+    ],
+    "homepage": "https://feinwerk.io",
+    "license": "GPL v3+",
+    "category": "insights",
+    "support": {
+        "email": "support@feinwerk.io",
+        "docs": "https://plugins.feinwerk.io/en/docs/plugins/FeinwerkCampaignScore"
+    },
+    "keywords": [
+        "campaign",
+        "campaign tracking",
+        "utm",
+        "data quality",
+        "naming convention",
+        "marketing",
+        "score"
+    ]
+}

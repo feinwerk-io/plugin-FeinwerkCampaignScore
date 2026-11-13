@@ -1,0 +1,39 @@
+# Changelog
+
+## 5.2.0
+
+- Without the free plugin Marketing Campaigns Reporting, an info box above the report explains how to get the checks of source, medium, content, group and placement (on the dashboard widget the short note stays).
+- Wrong input to the plugin's API (for example a date range for the overview of all websites) now answers with HTTP 400 instead of a server error.
+- The note on Matomo's Administration home page now sits at the top of the page instead of at its end.
+- For admins, the dashboard widget shows a small card on Feinwerk Campaigns below its link; its × hides only the card for 30 days, and `promotions = 0` switches it off like the other notes.
+
+## 5.1.1
+
+- Fixed: on Matomo instances with many large websites, Campaign Score of all websites could fail to load; it now loads there too.
+- Campaign Score of all websites on large instances: with more than ten websites it loads on a click, it shows the 100 websites with the most visits (before: the first 100 by ID), reads them ten at a time and keeps the result for 15 minutes; for a date range it asks for a day, week, month or year.
+- Campaign Score of all websites reads Matomo's campaign report without its keywords where Marketing Campaigns Reporting has the values, and a very large website on its own.
+- The score over time and the small line on the score card read a few periods at a time and only the reports the score needs, with far less memory on large websites (API: for several periods the score has no findings count).
+- Next to "Export as naming convention for Feinwerk Campaigns" admins find a link to the page of Feinwerk Campaigns that takes the file.
+- The tip below the report keeps its hide control right after its link and no longer wraps next to older Feinwerk plugins.
+
+## 5.1.0
+
+- New: below each finding you see where the value occurs (campaign name, source and medium), and a click opens Matomo's visitor log with exactly these visits.
+- New: findings that were not there in the previous period are marked "new".
+- New: the score card shows the change to the previous period and a small line with the last eight periods; the report "Campaign Score over time" shows the score as a graph and can be used in scheduled email reports and alerts.
+- New: admins can accept a value directly in the findings table; it then counts as clean for the website.
+- New: settings per website (accepted values, usual mediums, separator, pattern for campaign names) on top of the settings for all websites.
+- New checks: source aliases such as "fb" for facebook, the separator rule (hyphen or underscore, and values that mix both), an optional pattern for campaign names, hints on possible typos (they do not lower the score), and with Marketing Campaigns Reporting also campaign content, group and placement.
+- New: "Campaign Score of all websites", a table with the score of every website for users with access to more than one website.
+- New: download the correction list as CSV, and export the clean values as a starting naming convention for Feinwerk Campaigns.
+- The feedback question and the tip below the report take one low line each and never wrap.
+
+## 5.0.0
+
+- Versions: Matomo 5: version 5.x of this plugin, Matomo 6: version 6.x.
+- First version: Acquisition > Campaign Score shows how clean your campaign values are, as one score with its basis ("650 of 800 campaign visits with clean values").
+- Findings with a suggestion for each value: spelling variants, values with capital letters, spaces or other characters, unusual mediums and missing campaign names, sources or mediums.
+- Checks campaign name and keyword with Matomo's campaign report, and also source and medium with the free plugin Marketing Campaigns Reporting.
+- List of usual mediums in the general settings, by default the mediums that Feinwerk Channel Grouping assigns to a channel.
+- Dashboard widget with the score and the three largest problems.
+- Works in light and dark mode, German and English.

@@ -1,0 +1,36 @@
+{# The score of every website the user can view (Widgets/GetAllSites.php). Website names are escaped by Twig. #}
+<div class="fwcs-allsites">
+    {% if error|default %}
+        <div class="fwcs-card__meta">{{ error }}</div>
+    {% elseif loadUrl|default %}
+        {# many websites: loaded on a click (javascripts/allsites.js replaces this box with the table) #}
+        <p class="fwcs-card__meta">{{ 'FeinwerkCampaignScore_AllSitesLoadHint'|translate }}</p>
+        <button type="button" class="btn fwcs-allsites__load" data-url="{{ loadUrl }}"
+                data-loading="{{ 'General_LoadingData'|translate }}" data-error="{{ 'FeinwerkCampaignScore_ErrorLoading'|translate }}">{{ loadLabel }}</button>
+        <span class="fwcs-card__meta fwcs-allsites__status" aria-live="polite"></span>
+    {% elseif sites|default is empty %}
+        <div class="fwcs-card__meta">{{ 'FeinwerkCampaignScore_ScoreNoData'|translate }}</div>
+    {% else %}
+        <table class="fwcs-allsites__table">
+            <thead>
+                <tr>
+                    <th>{{ 'FeinwerkCampaignScore_ColumnWebsite'|translate }}</th>
+                    <th class="fwcs-allsites__num">{{ 'FeinwerkCampaignScore_ScoreMetric'|translate }}</th>
+                    <th class="fwcs-allsites__num">{{ 'FeinwerkCampaignScore_ColumnCampaignVisits'|translate }}</th>
+                    <th class="fwcs-allsites__num">{{ 'FeinwerkCampaignScore_ColumnFindings'|translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in sites %}
+                    <tr>
+                        <td><a href="{{ site.url }}">{{ site.name|rawSafeDecoded }}</a></td>
+                        <td class="fwcs-allsites__num">{% if site.score %}<span class="fwcs-card__score--{{ site.level }}">{{ site.score }}</span>{% endif %}</td>
+                        <td class="fwcs-allsites__num">{{ site.visits }}</td>
+                        <td class="fwcs-allsites__num">{{ site.findings }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if limited|default %}<div class="fwcs-card__meta">{{ limited }}</div>{% endif %}
+    {% endif %}
+</div>
