@@ -29,11 +29,23 @@ class PromoStylesheetTest extends TestCase
         $this->assertSame([], self::earlyShowingSelectors($css));
     }
 
+    /** The card (kit) waits for javascripts/promocard.js in the same way. */
+    public function test_no_card_shows_before_promocard_js_has_checked_it(): void
+    {
+        $card = (string) file_get_contents(__DIR__ . '/../../../stylesheets/promocard.css');
+
+        $this->assertStringContainsString('.fwpromo-card:not([data-fwpromo-ready])', $card);
+        $this->assertSame([], self::earlyShowingSelectors($card));
+        $this->assertSame(['.fwcs-card .fwpromo-card'], self::earlyShowingSelectors(
+            ".fwpromo-card:not([data-fwpromo-ready]) { display: none; }\n.fwcs-card .fwpromo-card { display: flex; }\n"
+        ));
+    }
+
     public function test_the_tip_line_still_outranks_the_plain_class_of_older_kit_copies(): void
     {
         $css = (string) file_get_contents(__DIR__ . '/../../../stylesheets/promo.css');
 
-        $this->assertMatchesRegularExpression('/\.fwpromo-line\[data-fwpromo-ready\]\s*\{[^}]*flex-wrap:\s*nowrap/', $css);
+        $this->assertSame(1, preg_match('/\.fwpromo-line\[data-fwpromo-ready\]\s*\{[^}]*flex-wrap:\s*nowrap/', $css));
     }
 
     public function test_the_check_catches_a_showing_rule_as_heavy_as_the_hidden_rule(): void
@@ -50,7 +62,8 @@ class PromoStylesheetTest extends TestCase
     }
 
     /**
-     * Selectors whose subject is a notice (`.fwpromo-line` or `.fwpromo-box`), that set a display other than none, weigh
+     * Selectors whose subject is a notice (`.fwpromo-line`, `.fwpromo-box` or `.fwpromo-card`), that set a display other
+     * than none, weigh
      * at least as much as the hidden rule and do not require `[data-fwpromo-ready]` on the notice.
      *
      * @return string[]
@@ -69,7 +82,7 @@ class PromoStylesheetTest extends TestCase
                 $selector = trim($selector);
                 $parts = preg_split('/\s*[\s>+~]\s*(?![^\[]*\])/', $selector);
                 $subject = (string) end($parts);
-                if (!preg_match('/^\.fwpromo-(line|box)(?![\w-])/', $subject)) {
+                if (!preg_match('/^\.fwpromo-(line|box|card)(?![\w-])/', $subject)) {
                     continue;
                 }
                 if (strpos($subject, '[data-fwpromo-ready]') !== false) {

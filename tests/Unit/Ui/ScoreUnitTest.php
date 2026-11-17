@@ -43,4 +43,22 @@ class ScoreUnitTest extends TestCase
     {
         $this->assertNull(ScoreUnit::forColumn('campaign_visits', ['module' => 'FeinwerkCampaignScore', 'action' => 'getScore']));
     }
+
+    /** Campaign Score over time gets the graph with gaps; every other report keeps Matomo's graph (Peter, 2026-11-14). */
+    public function test_onlyTheScoreReportGetsTheGraphWithGaps(): void
+    {
+        $list = ['table' => 'TableClass', 'graphEvolution' => 'MatomoEvolution'];
+        $mapped = ['table' => 'TableClass', 'graphEvolution' => 'ScoreEvolution'];
+
+        $this->assertSame($mapped, ScoreUnit::visualizations($list, ['module' => 'FeinwerkCampaignScore', 'action' => 'getScore'], 'graphEvolution', 'ScoreEvolution'));
+        $this->assertSame($mapped, ScoreUnit::visualizations($list, ['apiModule' => 'FeinwerkCampaignScore', 'apiAction' => 'getScore'], 'graphEvolution', 'ScoreEvolution'));
+        $this->assertSame($mapped, ScoreUnit::visualizations($list, ['moduleToWidgetize' => 'FeinwerkCampaignScore', 'actionToWidgetize' => 'getScore'], 'graphEvolution', 'ScoreEvolution'));
+
+        $this->assertSame($list, ScoreUnit::visualizations($list, ['module' => 'FeinwerkCampaignScore', 'action' => 'getFindings'], 'graphEvolution', 'ScoreEvolution'));
+        $this->assertSame($list, ScoreUnit::visualizations($list, ['module' => 'VisitsSummary', 'action' => 'getEvolutionGraph'], 'graphEvolution', 'ScoreEvolution'));
+        $this->assertSame($list, ScoreUnit::visualizations($list, ['module' => 'Dashboard', 'action' => 'embeddedIndex'], 'graphEvolution', 'ScoreEvolution'));
+        $this->assertSame($list, ScoreUnit::visualizations($list, [], 'graphEvolution', 'ScoreEvolution'));
+        // a Matomo without the graph: nothing is added
+        $this->assertSame(['table' => 'TableClass'], ScoreUnit::visualizations(['table' => 'TableClass'], ['module' => 'FeinwerkCampaignScore', 'action' => 'getScore'], 'graphEvolution', 'ScoreEvolution'));
+    }
 }

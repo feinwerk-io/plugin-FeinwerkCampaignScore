@@ -19,13 +19,13 @@ use Piwik\Plugins\CoreVisualizations\Visualizations\HtmlTable;
 use Piwik\Plugins\FeinwerkCampaignScore\Categories\CampaignScoreSubcategory;
 use Piwik\Plugins\FeinwerkCampaignScore\Columns\FindingValue;
 use Piwik\Plugins\FeinwerkCampaignScore\Feedback\FeedbackBar;
-use Piwik\Plugins\FeinwerkCampaignScore\Promo\PromoLine;
+use Piwik\Plugins\FeinwerkCampaignScore\Promo\FooterLink;
 use Piwik\Plugins\FeinwerkCampaignScore\Ui\FindingTexts;
 use Piwik\Report\ReportWidgetFactory;
 use Piwik\Widget\WidgetsList;
 
 /**
- * The findings table on Acquisition > Campaign Score, with the feedback question and the tip line below it.
+ * The findings table on Acquisition > Campaign Score, with the feedback question and the link to Feinwerk Campaigns below it.
  */
 class GetFindings extends Report
 {
@@ -115,8 +115,9 @@ class GetFindings extends Report
 
         if ($view instanceof HtmlTable) {
             $view->config->show_totals_row = false;
+            // the link with the mark of Feinwerk Campaigns in place of the tip line (Peter, 2026-11-13)
             $view->config->show_footer_message = FeedbackBar::forReport(FeedbackBar::TOPIC_REPORT, $view, $idSite)
-                . PromoLine::forReport($view);
+                . FooterLink::forReport($view);
         }
     }
 }

@@ -1,7 +1,8 @@
 /*
- * The card in a dashboard widget (Promo/PromoCard.php, templates/_promoCard.twig, javascripts/promocard.js). Plain CSS
- * without Matomo's LESS variables (Matomo 5.0 to 6.x); Matomo's CSS variables with fallbacks, a dark variant for
- * [data-theme-mode="dark"] and for "auto" with a dark system setting.
+ * Feinwerk promotion kit: the card in a dashboard widget (templates/_premiumCard.twig, javascripts/promocard.js; first
+ * form and values by Campaign Score, Peter 2026-11-13: "ad 2: card", "Als Blaupause für Dashboard widgets merken").
+ * Plain CSS without Matomo's LESS variables (Matomo 5.0 to 6.x); Matomo's CSS variables with fallbacks, a dark variant
+ * for [data-theme-mode="dark"] and for "auto" with a dark system setting.
  */
 .fwpromo-card {
     --fwpromo-card-accent: #0e7c7b;
@@ -20,7 +21,7 @@
     }
 }
 
-/* hidden until the script has checked the 30 days, so a hidden card never flashes up */
+/* hidden until the script has checked the 30 days (and, in a rotation, until it is this card's turn) */
 .fwpromo-card:not([data-fwpromo-ready]) {
     display: none;
 }
@@ -38,16 +39,24 @@
     color: var(--theme-color-text, #212121);
     font-size: 12.5px;
     line-height: 1.4;
+    text-align: left;
 }
 
 .fwpromo-card__mark {
     flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    overflow: hidden;
     line-height: 0;
 }
 
-.fwpromo-card__mark svg {
+.fwpromo-card__mark svg,
+.fwpromo-card__mark img {
+    display: block;
     width: 28px;
     height: 28px;
+    object-fit: cover;
 }
 
 .fwpromo-card__body {
@@ -59,8 +68,13 @@
     font-size: 12.5px;
 }
 
+/* one sentence: at most two lines, the rest in the title */
 .fwpromo-card__body span {
+    display: -webkit-box;
+    overflow: hidden;
     color: var(--theme-color-text-light, #444);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .fwpromo-card a.fwpromo-card__link,

@@ -14,7 +14,7 @@ use Piwik\Cache;
 use Piwik\Container\StaticContainer;
 use Piwik\DataTable;
 use Piwik\DataTable\Row;
-use Piwik\Http\BadRequestException;
+use Piwik\Plugins\FeinwerkCampaignScore\Http\InvalidInputException;
 use Piwik\Piwik;
 use Piwik\Plugin\Manager as PluginManager;
 use Piwik\Plugins\FeinwerkCampaignScore\Check\Analyzer;
@@ -119,7 +119,7 @@ class API extends \Piwik\Plugin\API
     {
         $periods = $this->analyze($idSite, $period, $date, $segment);
         if (count($periods) !== 1) {
-            throw new BadRequestException(Piwik::translate('FeinwerkCampaignScore_ErrorSinglePeriod'));
+            throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorSinglePeriod'));
         }
         $entry = reset($periods);
         $idSite = (int) $idSite;
@@ -161,7 +161,7 @@ class API extends \Piwik\Plugin\API
         $date = (string) $date;
         $problem = AllSites::periodProblem($period, $date);
         if ($problem !== null) {
-            throw new BadRequestException(Piwik::translate(
+            throw new InvalidInputException(Piwik::translate(
                 $problem === AllSites::RANGE ? 'FeinwerkCampaignScore_ErrorRangeAllSites' : 'FeinwerkCampaignScore_ErrorSinglePeriod'
             ));
         }
@@ -291,12 +291,12 @@ class API extends \Piwik\Plugin\API
         $idSite = (int) $idSite;
         Piwik::checkUserHasAdminAccess($idSite);
         if (!PluginFeedback::isAllowedMethod((string) ($_SERVER['REQUEST_METHOD'] ?? ''))) {
-            throw new BadRequestException('FeinwerkCampaignScore.acceptValues only accepts POST requests.');
+            throw new InvalidInputException('FeinwerkCampaignScore.acceptValues only accepts POST requests.');
         }
         $list = is_array($values) ? $values : preg_split('/\r\n|\r|\n/', (string) $values);
         $list = array_values(array_filter(array_map('trim', array_map('strval', $list ?: [])), 'strlen'));
         if ($list === []) {
-            throw new BadRequestException(Piwik::translate('FeinwerkCampaignScore_ErrorNoValue'));
+            throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorNoValue'));
         }
 
         $this->analyses = [];
@@ -304,7 +304,7 @@ class API extends \Piwik\Plugin\API
             return ['accepted' => (new MeasurableSettings($idSite))->accept($list)];
         } catch (\LengthException $e) {
             // more accepted values than a website can keep: the translated limit
-            throw new BadRequestException($e->getMessage());
+            throw new InvalidInputException($e->getMessage());
         }
     }
 
@@ -323,7 +323,7 @@ class API extends \Piwik\Plugin\API
         Piwik::checkUserIsNotAnonymous();
         Piwik::checkUserHasViewAccess((int) $idSite);
         if (!PluginFeedback::isAllowedMethod((string) ($_SERVER['REQUEST_METHOD'] ?? ''))) {
-            throw new BadRequestException('FeinwerkCampaignScore.sendFeedback only accepts POST requests.');
+            throw new InvalidInputException('FeinwerkCampaignScore.sendFeedback only accepts POST requests.');
         }
         try {
             $payload = PluginFeedback::payload(
@@ -335,7 +335,7 @@ class API extends \Piwik\Plugin\API
                 (string) StaticContainer::get(Translator::class)->getCurrentLanguage()
             );
         } catch (\InvalidArgumentException $e) {
-            throw new BadRequestException(Piwik::translate('FeinwerkCampaignScore_ErrorFeedback'));
+            throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorFeedback'));
         }
 
         return ['sent' => FeedbackVotes::create()->cast(Piwik::getCurrentUserLogin(), $payload, PluginFeedback::enabled())];
@@ -356,7 +356,7 @@ class API extends \Piwik\Plugin\API
     private function analyze($idSite, $period, $date, $segment, bool $scoreOnly = false): array
     {
         if (!is_numeric($idSite) || (int) $idSite <= 0) {
-            throw new BadRequestException('FeinwerkCampaignScore checks one website at a time: idSite must be a single website ID.');
+            throw new InvalidInputException('FeinwerkCampaignScore checks one website at a time: idSite must be a single website ID.');
         }
         $idSite = (int) $idSite;
         Piwik::checkUserHasViewAccess($idSite);

@@ -35,9 +35,17 @@
         return notice.getAttribute('data-fwpromo-placement') || 'line';
     }
 
+    // demo mode (data-fwpromo-demo, test instances): a hidden notice stays away for the browser session only
+    function storage(notice) {
+        return notice.hasAttribute('data-fwpromo-demo') ? window.sessionStorage : window.localStorage;
+    }
+
     function dismissed(notice) {
         try {
-            var at = parseInt(window.localStorage.getItem(key(notice.getAttribute('data-fwpromo-id'))) || '0', 10);
+            var at = parseInt(storage(notice).getItem(key(notice.getAttribute('data-fwpromo-id'))) || '0', 10);
+            if (notice.hasAttribute('data-fwpromo-demo')) {
+                return at > 0;
+            }
             var days = parseInt(notice.getAttribute('data-fwpromo-days') || '30', 10);
             return at > 0 && Date.now() - at < days * DAY;
         } catch (e) {
@@ -46,8 +54,10 @@
     }
 
     function remove(notice) {
-        // a context box is the only content of its Matomo widget: hide that widget as well, so no gap stays behind
-        var widget = notice.classList.contains('fwpromo-box') && notice.closest ? notice.closest('.matomo-widget') : null;
+        // a context box that is the only content of its Matomo widget (data-fwpromo-widget="hide"): hide that widget as
+        // well, so no gap stays behind; a box inside a report widget never takes the report with it
+        var widget = notice.getAttribute('data-fwpromo-widget') === 'hide' && notice.closest
+            ? notice.closest('.matomo-widget') : null;
         if (widget) {
             widget.style.display = 'none';
         }
@@ -87,7 +97,7 @@
         event.preventDefault();
         var id = notice.getAttribute('data-fwpromo-id') || '';
         try {
-            window.localStorage.setItem(key(id), String(Date.now()));
+            storage(notice).setItem(key(id), String(Date.now()));
         } catch (e) {
             // private mode or blocked storage: hidden on this page only
         }

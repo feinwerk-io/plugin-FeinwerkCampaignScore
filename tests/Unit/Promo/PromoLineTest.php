@@ -79,6 +79,59 @@ class PromoLineTest extends TestCase
         self::assertFalse(PromoLine::enabledBy([], [], $switch));
     }
 
+    /** The demo switch reads like the connector's Promotions::demo(), so no value turns it on in one plugin only. */
+    public function test_the_demo_switch_reads_like_the_connectors(): void
+    {
+        foreach (['1', 'on', 'yes', 'true', 'TRUE', ' On ', 'Yes', true, 1] as $on) {
+            self::assertTrue(PromoLine::demoBy(['promotions_demo' => $on]), var_export($on, true));
+        }
+        foreach (['0', 'off', 'no', 'false', '', '2', 2, 0, false, null, ['1'], 'enabled'] as $off) {
+            self::assertFalse(PromoLine::demoBy(['promotions_demo' => $off]), var_export($off, true));
+        }
+        self::assertFalse(PromoLine::demoBy([]), 'off by default');
+    }
+
+    /** Every off switch beats demo: demo is only asked once promotions are on (shownToCurrentUser()). */
+    public function test_an_off_switch_beats_demo(): void
+    {
+        self::assertFalse(PromoLine::enabledBy(['promotions' => '0'], ['promotions_demo' => '1']));
+        self::assertFalse(PromoLine::enabledBy([], ['promotions' => '0', 'promotions_demo' => '1']));
+        self::assertFalse(PromoLine::enabledBy([], ['promotions_demo' => '1'], static function (): bool {
+            return false;
+        }), 'the connector setting');
+    }
+
+    /** Demo lifts the message conditions: the whole rotation, whatever is installed or tracked. */
+    public function test_demo_shows_every_message(): void
+    {
+        $everything = static function (): bool {
+            return true;
+        };
+
+        self::assertSame(array_keys(PromoLine::MESSAGES), PromoLine::candidates($everything, false, true));
+        self::assertNotSame(array_keys(PromoLine::MESSAGES), PromoLine::candidates($everything, false));
+    }
+
+    /** In demo a hidden notice stays away for the session only: days 0 plus the demo attribute for the scripts. */
+    public function test_demo_variables_keep_a_hidden_notice_away_for_the_session_only(): void
+    {
+        $translate = static function (string $key): string {
+            return $key;
+        };
+        $normal = PromoLine::variables('campaigns', 'en', $translate, 'line');
+        $demo = PromoLine::variables('campaigns', 'en', $translate, 'line', true);
+
+        self::assertSame([30, false], [$normal['dismissDays'], $normal['demo']]);
+        self::assertSame([0, true], [$demo['dismissDays'], $demo['demo']]);
+        foreach (['_promo.twig', '_promoBox.twig'] as $template) {
+            self::assertStringContainsString(
+                '{% if promo.demo|default(false) %} data-fwpromo-demo="1"{% endif %}',
+                (string) file_get_contents(__DIR__ . '/../../../templates/' . $template),
+                $template
+            );
+        }
+    }
+
     public function test_only_admins_and_super_users(): void
     {
         self::assertTrue(PromoLine::visibleTo(false, true));
@@ -153,7 +206,7 @@ class PromoLineTest extends TestCase
     public function test_every_message_has_texts_a_page_in_both_languages_and_a_placement(): void
     {
         foreach (PromoLine::MESSAGES as $id => $message) {
-            self::assertMatchesRegularExpression('/^[a-z_]+$/', $id);
+            self::assertSame(1, preg_match('/^[a-z_]+$/', $id), $id);
             foreach (['title', 'text', 'link'] as $field) {
                 self::assertStringStartsWith('FeinwerkCampaignScore_Promo', $message[$field]);
             }
@@ -179,6 +232,7 @@ class PromoLineTest extends TestCase
             'link' => '[FeinwerkCampaignScore_PromoCampaignsLineLink]',
             'url' => PromoLine::url('campaigns', 'en'),
             'dismissDays' => 30,
+            'demo' => false,
         ], PromoLine::variables('campaigns', 'en', $translate));
         // the context box on Matomo's campaign reports keeps the kit's copy
         $box = PromoLine::variables('campaigns', 'en', $translate, 'campaigns');
@@ -212,7 +266,7 @@ class PromoLineTest extends TestCase
             foreach ($keys as $key) {
                 $text = $texts['FeinwerkCampaignScore'][substr($key, strlen('FeinwerkCampaignScore_'))] ?? '';
                 self::assertNotSame('', $text, $language . ' ' . $key);
-                self::assertDoesNotMatchRegularExpression('/[\x{2013}\x{2014}]/u', $text, $language . ' ' . $key);
+                self::assertSame(0, preg_match('/[\x{2013}\x{2014}]/u', $text), $language . ' ' . $key);
             }
         }
     }

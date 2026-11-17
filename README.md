@@ -2,14 +2,38 @@
 
 ## Description
 
-Check how clean your campaign tracking is: find spelling variants, unknown mediums and missing sources in your Matomo campaign reports.
+**How clean is your campaign tracking? Campaign Score answers with one number, and shows you what to fix.**
 
-Campaign Score reads the campaign reports Matomo already has for the selected website and period and sums them up in
-one number: the share of campaign visits with clean values. Below it, a table shows what keeps the score down, with a
-suggestion for each value, for example that "Newsletter", "newsletter" and "news_letter" are the same campaign and
-should all be written "newsletter".
+"Newsletter", "newsletter" and "news_letter" are one campaign, but Matomo reports three. Values like these split your
+campaign reports and make every comparison wrong. Campaign Score reads the campaign reports Matomo already has and
+gives you the share of campaign visits with clean values, for any website, period and segment.
 
-Documentation and more Plugins for Matomo: [Feinwerk Plugins](https://plugins.feinwerk.io/en/plugins/FeinwerkCampaignScore).
+- **One score with context:** the score of the period, its change to the previous period and a small trend line, also
+  as a dashboard widget with the three largest problems.
+- **The trend:** Campaign Score over time shows whether your campaign data gets cleaner, and works in scheduled email
+  reports and alerts.
+- **Every finding with a fix:** spelling variants, possible typos, unusual mediums, missing values, source aliases
+  such as "fb" for facebook, separators and names outside your pattern, each with the field, the visits and a
+  suggestion.
+- **Context for each finding:** where the value occurs, what is new since the previous period, and the matching visits
+  in the visitor log with one click.
+- **Your rules per website:** accepted values, usual mediums, the separator and an optional pattern for campaign names.
+- **All websites at once:** the score of every website in one table, a correction list as CSV and your clean values as
+  a naming convention file.
+- **More fields with Marketing Campaigns Reporting:** with this free plugin, Campaign Score also checks source, medium,
+  content, group and placement.
+
+Campaign Score reads only Matomo's archived reports, never the raw visits, adds no archiving and no tables of its own,
+and sends nothing anywhere, apart from an optional thumbs up or down on whether the report helps you.
+
+**Works with Feinwerk Campaigns:** keep new campaign links clean from the start with Feinwerk Campaigns, which takes
+your naming convention from Campaign Score.
+
+**Get started:** open *Acquisition › Campaign Score*.
+
+**More Plugins for Matomo by Feinwerk:** install [Feinwerk Connector](https://plugins.matomo.org/FeinwerkMarketplaceConnector)
+from the Matomo Marketplace to discover, install and update all Feinwerk plugins, free and paid, right in your Matomo.
+Documentation: [plugins.feinwerk.io](https://plugins.feinwerk.io/en/plugins/FeinwerkCampaignScore).
 
 ## Requirements
 
@@ -21,8 +45,9 @@ Documentation and more Plugins for Matomo: [Feinwerk Plugins](https://plugins.fe
 
 ## Installation
 
-With one click through the Feinwerk connector (**Administration → Feinwerk Plugins → Discover**) or as a ZIP
-file, see [Installing plugins](https://plugins.feinwerk.io/en/docs/installing-plugins). To install the ZIP
+From Matomo's own Marketplace (**Administration → Platform → Marketplace**, search for "Campaign Score"), with one
+click through the Feinwerk Marketplace Connector (**Administration → Feinwerk Plugins → Discover**; the connector itself
+is on the Matomo Marketplace too, search for "Feinwerk") or as a ZIP file, see [Installing plugins](https://plugins.feinwerk.io/en/docs/installing-plugins). To install the ZIP
 by hand, copy the folder to `plugins/FeinwerkCampaignScore` and activate it under
 **Administration → Plugins → Manage Plugins** or on the command line:
 
@@ -77,16 +102,18 @@ Keyword, content, group and placement do not count in the score.
   Matomo asks for confirmation first. Accepted values are listed in the website settings, where you can remove them
   (at most 500 per website). An accepted value counts as clean in every field.
 
-**Downloads** below the score card:
+**Downloads** with the score card (only for a period with campaign visits):
 
 - *Download correction list (CSV)*: one line per value to fix, with field, problem, visits and suggestion, to work
   through or to pass on to the team. Opens in Excel, Numbers and LibreOffice.
 - *Export as naming convention for Feinwerk Campaigns*: the clean values of the period as a file that Feinwerk
   Campaigns can take over as a starting convention. It holds only values and their visit counts, nothing about
-  visitors, and is not sent anywhere: you download it and decide what to do with it. In Feinwerk Campaigns, *Suggest
-  a naming convention* (https://app.campaigns.feinwerk.io/convention/suggest, linked next to the export for admins)
-  takes the file: you review its values, and only the ones you select are added; nothing existing is changed or
-  deleted, and the file is deleted after at most 30 minutes.
+  visitors, and is not sent anywhere: you download it and decide what to do with it. For admins it is the first step of
+  the guide to Feinwerk Campaigns beside the score card (see "Tips from Feinwerk"); once that guide is hidden, the
+  export is a link under the score again. In Feinwerk Campaigns, *Suggest a naming convention*
+  (https://app.campaigns.feinwerk.io/convention/suggest, the guide's second step) takes the file: you review its values,
+  and only the ones you select are added; nothing existing is changed or deleted, and the file is deleted after at most
+  30 minutes.
 
 **Dashboard widgets:** under **Dashboard → Add a widget → Acquisition** you find *Campaign Score* (the score, the
 three largest problems and a link to the full report) and *Campaign Score over time*. Users with access to more than
@@ -116,6 +143,17 @@ Campaign Score changes no tracking data. It reads Matomo's existing campaign rep
 stores only your settings and accepted values.
 
 ## FAQ
+
+**Do I need Marketing Campaigns Reporting?**
+No. Without it Campaign Score checks the campaign name and keyword; with this free plugin also source, medium, content,
+group and placement.
+
+**Does Campaign Score change my data?**
+No. It only reads the campaign reports Matomo already archived and stores your settings per website.
+
+**Where do I find more Feinwerk plugins?**
+Install Feinwerk Connector from the Matomo Marketplace. It lists all Plugins for Matomo by Feinwerk, free and paid, and
+installs and updates them with one click.
 
 **How does Campaign Score handle capitalisation?**
 Without Marketing Campaigns Reporting, Matomo writes campaign names and keywords in lowercase. Marketing Campaigns
@@ -203,7 +241,13 @@ The plugin shows short tips on other Feinwerk offers, for example Feinwerk Campa
 admin access to at least one website and super users see them, and only in Matomo's interface: never in exports, API
 results, email reports or embedded widgets. You see at most one tip per place and page:
 
-- one line under the findings of Campaign Score,
+- beside the score card on the report page, a short guide to Feinwerk Campaigns (why, export the convention, upload
+  it, build clean links); after its "×" the paid Feinwerk plugins this Matomo does not have yet follow in the same
+  place, one at a time, each with its own "×". Super users open them in the Feinwerk Plugins screen of their Matomo
+  (Feinwerk Marketplace Connector 5.5.0 or newer); admins, and everyone without the connector, get the plugin's page on
+  plugins.feinwerk.io in a new tab. Without the connector the plugin uses a list it ships itself (no prices, nothing
+  loaded),
+- one link to Feinwerk Campaigns under the findings of Campaign Score,
 - one small card in the dashboard widget Campaign Score,
 - one banner on the start page of Matomo's administration,
 - one box at the end of the Campaigns, Ecommerce overview and Goals overview reports.
@@ -218,7 +262,8 @@ To switch the tips off for this plugin, add to `config/config.ini.php`:
     promotions = 0
 
 The same line in the section `[FeinwerkMarketplaceConnector]` switches them off for all Feinwerk plugins. Recent
-versions of the Feinwerk Marketplace Connector also have the setting "Show notes on other Feinwerk offers".
+versions of the Feinwerk Marketplace Connector (on the Matomo Marketplace) also have the setting "Show notes on other
+Feinwerk offers".
 
 ## License
 

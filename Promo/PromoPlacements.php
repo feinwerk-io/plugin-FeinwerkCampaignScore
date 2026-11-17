@@ -17,9 +17,9 @@ use Piwik\Widget\WidgetConfig;
 use Piwik\Widget\WidgetsList;
 
 /**
- * The free placements of the Feinwerk promotion kit (docs/promo-kit.md, house rule docs/promotions.md): one banner on
- * Matomo's admin home (event Template.adminHome) and one context box at the end of matching Matomo report pages
- * (event Widget.filterWidgets adds a widget that the controller action promoBox renders). Paid plugins have neither.
+ * The free placements of the Feinwerk promotion kit (docs/promo-kit.md, house rule docs/promotions.md): one banner at
+ * the top of Matomo's admin home (event Template.beforeContent) and one context box at the end of matching Matomo report
+ * pages (event Widget.filterWidgets adds a widget that the controller action promoBox renders). Paid plugins have neither.
  *
  * Each placement is shown once per page, whatever the number of Feinwerk plugins: the first plugin that fills it claims
  * it in Matomo's transient cache (key fwpromo.claimed.<placement>, value: the plugin name), the others leave it empty.
@@ -54,7 +54,7 @@ final class PromoPlacements
      */
     public static function messageFor(string $placement, callable $isInstalled): ?string
     {
-        foreach (PromoLine::candidates($isInstalled, true) as $id) {
+        foreach (PromoLine::candidates($isInstalled, true, PromoLine::demo()) as $id) {
             if ((PromoLine::MESSAGES[$id]['placement'] ?? null) === $placement) {
                 return $id;
             }
@@ -81,17 +81,18 @@ final class PromoPlacements
         return true;
     }
 
-    /**
-     * Template.adminHome: the banner, for admins and super users, once per page. Never breaks the page.
-     *
-     * @param string $out the HTML of the event, appended to
-     */
     /** Template.beforeContent's arguments on the Administration home page (layout admin, CoreAdminHome, home). */
     public static function isAdminHome($type, $module, $action): bool
     {
         return $type === 'admin' && $module === 'CoreAdminHome' && $action === 'home';
     }
 
+    /**
+     * The banner at the top of the Administration home (Template.beforeContent, see isAdminHome()), for admins and super
+     * users, once per page. Never breaks the page.
+     *
+     * @param string $out the HTML of the event, appended to
+     */
     public static function adminHome(&$out): void
     {
         try {
@@ -102,7 +103,7 @@ final class PromoPlacements
             if ($id === null || !self::claim(self::BANNER)) {
                 return;
             }
-            $out .= self::render(PromoLine::variables($id, PromoLine::language(), [Piwik::class, 'translate'], self::BANNER));
+            $out .= self::render(PromoLine::variables($id, PromoLine::language(), [Piwik::class, 'translate'], self::BANNER, PromoLine::demo()));
         } catch (\Throwable $e) {
             // a promotion never breaks Matomo's admin home
         }
@@ -193,12 +194,13 @@ final class PromoPlacements
             ) {
                 return '';
             }
+            $demo = PromoLine::demo();
             $product = PromoLine::MESSAGES[$id]['product'];
-            if ($product !== null && PromoLine::isInstalled($product)) {
+            if (!$demo && $product !== null && PromoLine::isInstalled($product)) {
                 return '';
             }
 
-            return self::render(PromoLine::variables($id, PromoLine::language(), [Piwik::class, 'translate'], $placement));
+            return self::render(PromoLine::variables($id, PromoLine::language(), [Piwik::class, 'translate'], $placement, $demo));
         } catch (\Throwable $e) {
             return '';
         }

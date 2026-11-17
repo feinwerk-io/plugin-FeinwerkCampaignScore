@@ -1,5 +1,23 @@
 # Changelog
 
+## 5.4.0
+
+- Demo mode for test instances: `promotions_demo = 1` in the section `[FeinwerkMarketplaceConnector]` shows every note and every paid plugin, also the installed ones, and "×" hides them for the browser session only. Every off switch still wins.
+- After the guide beside the score card is hidden, admins now also see the paid Feinwerk plugins they do not have yet, with a link to the plugin's page on plugins.feinwerk.io and a line that their super user can install it; super users keep the link to the Feinwerk Plugins screen. With the Feinwerk Marketplace Connector 5.5.0 or newer the list comes from the store; without the connector the plugin shows them from a list it ships itself.
+- The notes on Feinwerk offers (the guide beside the score card, the banner on the administration start page and the boxes on Matomo's reports) show the Feinwerk Plugins logo.
+
+## 5.3.1
+
+- Wrong input to the plugin's API now answers with HTTP 400 on Matomo 5.0 as well (it answered 200 there with the error message).
+- Campaign Score over time shows no point for a period without campaign visits instead of 0 %; the line runs from one period with campaign visits to the next.
+
+## 5.3.0
+
+- For admins, a short guide to Feinwerk Campaigns now stands beside the score card: why the score misses points, then export the naming convention, upload it to Feinwerk Campaigns and build clean links. The score card is larger and centred, with the correction list under its text. "×" hides the guide for 30 days; super users then see the paid Feinwerk plugins they do not have yet in the same place, one at a time (with a recent Feinwerk Marketplace Connector).
+- Under the findings, a link with the mark of Feinwerk Campaigns replaces the tip line.
+- Without campaign visits in the period the score card offers no downloads.
+- The scripts and styles of the notes are the same as in the other Feinwerk plugins, so they no longer interfere with each other on one page.
+
 ## 5.2.0
 
 - Without the free plugin Marketing Campaigns Reporting, an info box above the report explains how to get the checks of source, medium, content, group and placement (on the dashboard widget the short note stays).

@@ -102,6 +102,18 @@ final class PromoLine
     public const PREFERRED = 'campaigns';
 
     /**
+     * Demo mode for Feinwerk's test instances (Peter, 2026-11-16: "kannst du einen demo modus einführen, damit stats6
+     * auch wieder die werbung zeigt?", docs/promotions.md "Demo mode for test instances"): `promotions_demo = 1` in
+     * [FeinwerkMarketplaceConnector] of config.ini.php, also without the connector. Every off switch still wins and the
+     * audience stays admins and super users; demo only lifts the conditions (installed products, build floors) and
+     * keeps a hidden notice away for the browser session instead of 30 days.
+     */
+    public const DEMO = 'promotions_demo';
+
+    /** @var bool|null demo mode of this request */
+    private static $demo = null;
+
+    /**
      * The off switches, in this order (docs/promo-kit.md, "Off switches"): promotions = 0 in the plugin's own config
      * section, promotions = 0 in [FeinwerkMarketplaceConnector] (all Feinwerk plugins, read even without the
      * connector), then the connector's setting in Matomo's UI. A failing connector switch counts as on.
@@ -123,6 +135,49 @@ final class PromoLine
         } catch (\Throwable $e) {
             return true;
         }
+    }
+
+    /**
+     * The demo switch, read like the connector's Promotions::demo(): 1, on, yes and true (any case, Matomo's INI reader
+     * may also hand over PHP true or 1) are on, everything else is off.
+     *
+     * @param array<string, mixed> $connectorSection [FeinwerkMarketplaceConnector] of config.ini.php
+     */
+    public static function demoBy(array $connectorSection): bool
+    {
+        $value = $connectorSection[self::DEMO] ?? null;
+        if ($value === true || $value === 1) {
+            return true;
+        }
+        if (!is_string($value) && !is_int($value)) {
+            return false;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['1', 'on', 'yes', 'true'], true);
+    }
+
+    /** Demo mode for this request, read once. Only asked behind enabled(): an off switch beats it. */
+    public static function demo(): bool
+    {
+        if (self::$demo === null) {
+            try {
+                $connector = Config::getInstance()->{self::CONNECTOR};
+                self::$demo = self::demoBy(is_array($connector) ? $connector : []);
+            } catch (\Throwable $e) {
+                self::$demo = false;
+            }
+        }
+
+        return self::$demo;
+    }
+
+    /**
+     * How long a hidden notice stays away: 30 days, in demo 0 (the kit's scripts then keep it away for the browser
+     * session only, and older copies of them on the page only).
+     */
+    public static function dismissDays(bool $demo): int
+    {
+        return $demo ? 0 : self::DISMISS_DAYS;
     }
 
     public static function enabled(): bool
@@ -193,8 +248,12 @@ final class PromoLine
      * @param callable(string): bool $isInstalled
      * @return string[] message ids in the order of MESSAGES
      */
-    public static function candidates(callable $isInstalled, bool $isEcommerceSite = false): array
+    public static function candidates(callable $isInstalled, bool $isEcommerceSite = false, bool $demo = false): array
     {
+        if ($demo) {
+            // demo: the whole rotation, whatever is installed or tracked
+            return array_keys(self::MESSAGES);
+        }
         $ids = [];
         foreach (self::MESSAGES as $id => $message) {
             if (!empty($message['ecommerce']) && !$isEcommerceSite) {
@@ -240,9 +299,9 @@ final class PromoLine
      * Variables of templates/_promo.twig and templates/_promoBox.twig. Pure.
      *
      * @param callable(string): string $translate
-     * @return array{id: string, placement: string, title: string, text: string, link: string, url: string, dismissDays: int}
+     * @return array{id: string, placement: string, title: string, text: string, link: string, url: string, dismissDays: int, demo: bool}
      */
-    public static function variables(string $id, string $language, callable $translate, string $placement = 'line'): array
+    public static function variables(string $id, string $language, callable $translate, string $placement = 'line', bool $demo = false): array
     {
         if (!isset(self::MESSAGES[$id])) {
             throw new \InvalidArgumentException('message');
@@ -257,7 +316,8 @@ final class PromoLine
             'text' => $translate($line && isset($message['lineText']) ? $message['lineText'] : $message['text']),
             'link' => $translate($line && isset($message['lineLink']) ? $message['lineLink'] : $message['link']),
             'url' => self::url($id, $language),
-            'dismissDays' => self::DISMISS_DAYS,
+            'dismissDays' => self::dismissDays($demo),
+            'demo' => $demo,
         ];
     }
 
@@ -285,9 +345,10 @@ final class PromoLine
             return null;
         }
         $isEcommerceSite = $idSite > 0 && Site::isEcommerceEnabledFor($idSite);
-        $id = self::choose(self::candidates([self::class, 'isInstalled'], $isEcommerceSite), intdiv(time(), 86400));
+        $demo = self::demo();
+        $id = self::choose(self::candidates([self::class, 'isInstalled'], $isEcommerceSite, $demo), intdiv(time(), 86400));
 
-        return $id === null ? null : self::variables($id, self::language(), [Piwik::class, 'translate']);
+        return $id === null ? null : self::variables($id, self::language(), [Piwik::class, 'translate'], 'line', $demo);
     }
 
     /** The line as HTML for the footer of a report view; '' where it is not shown and on any error (never breaks a report). */

@@ -11,6 +11,7 @@ namespace Piwik\Plugins\FeinwerkCampaignScore\tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Piwik\Plugins\FeinwerkCampaignScore\API;
+use Piwik\Plugins\FeinwerkCampaignScore\Http\InvalidInputException;
 use Piwik\Plugins\FeinwerkCampaignScore\MeasurableSettings;
 
 /**
@@ -54,15 +55,19 @@ class AcceptValuesTest extends TestCase
     }
 
     /**
-     * Wrong input is the caller's error: HTTP 400 through Matomo's BadRequestException (Matomo sets the status from it),
-     * not a plain exception that ends as 500 (best-practice digest #2, 2026-11-13).
+     * Wrong input is the caller's error: HTTP 400 through the plugin's own InvalidInputException (Matomo sets the status
+     * from an HttpCodeException), not a plain exception that ends as 500, and not
+     * core's BadRequestException, which drops the code on Matomo 5.0.0 (the status would stay 200 there).
      */
     public function test_inputErrorsOfTheApiAreBadRequests(): void
     {
         $source = (string) file_get_contents((string) (new \ReflectionClass(API::class))->getFileName());
 
-        $this->assertStringContainsString('use Piwik\\Http\\BadRequestException;', $source);
+        $this->assertStringContainsString('use Piwik\\Plugins\\FeinwerkCampaignScore\\Http\\InvalidInputException;', $source);
+        $this->assertStringNotContainsString('BadRequestException', $source);
         $this->assertSame(0, preg_match('/throw new \\\\(InvalidArgumentException|Exception)\(/', $source), 'no plain exception for input errors');
-        $this->assertSame(400, (new \Piwik\Http\BadRequestException('x'))->getCode());
+        $error = new InvalidInputException('x');
+        $this->assertSame(400, $error->getCode());
+        $this->assertInstanceOf(\Piwik\Http\HttpCodeException::class, $error);
     }
 }

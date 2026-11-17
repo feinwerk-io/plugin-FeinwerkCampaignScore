@@ -5,7 +5,7 @@
    The banner and the context boxes (templates/_promoBox.twig) keep label and title.
    promo = PromoLine::variables() {id, placement, title, text, link, url, dismissDays}; hiding for 30 days and once per
    page in javascripts/promo.js. #}
-<div class="fwpromo-line" data-fwpromo-id="{{ promo.id }}" data-fwpromo-placement="line" data-fwpromo-days="{{ promo.dismissDays }}">
+<div class="fwpromo-line" data-fwpromo-id="{{ promo.id }}" data-fwpromo-placement="line" data-fwpromo-days="{{ promo.dismissDays }}"{% if promo.demo|default(false) %} data-fwpromo-demo="1"{% endif %}>
     <span class="fwpromo-line__text" title="{{ promo.text }}">{{ promo.text }}</span>
     <a class="fwpromo-line__link" href="{{ promo.url }}" target="_blank" rel="noopener">{{ promo.link }}</a>
     <button type="button" class="fwpromo-line__dismiss fwpromo-dismiss" title="{{ 'FeinwerkCampaignScore_PromoDismiss'|translate }}"

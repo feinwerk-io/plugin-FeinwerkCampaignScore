@@ -1,5 +1,17 @@
 ## FAQ
 
+__Do I need Marketing Campaigns Reporting?__
+
+No. Without it Campaign Score checks the campaign name and keyword; with this free plugin also source, medium, content, group and placement.
+
+__Does Campaign Score change my data?__
+
+No. It only reads the campaign reports Matomo already archived and stores your settings per website.
+
+__Where do I find more Feinwerk plugins?__
+
+Install Feinwerk Connector from the Matomo Marketplace. It lists all Plugins for Matomo by Feinwerk, free and paid, and installs and updates them with one click.
+
 __How does Campaign Score handle capitalisation?__
 
 Without Marketing Campaigns Reporting, Matomo writes campaign names and keywords in lowercase. Marketing Campaigns Reporting keeps the original capitalisation by default (its setting "Keep campaign parameter capitalisation"), also in Matomo's own campaign report, so Campaign Score can show values such as "Black Friday 2026" as not clean. Values that differ only in capitalisation ("Newsletter" and "newsletter") are usually grouped into one row per day by Matomo's database, under one of the spellings; Campaign Score then sees only that spelling, and finds such variants only where different days used different spellings. If you switch the setting of Marketing Campaigns Reporting off, it writes all values in lowercase from then on, and only variants such as "news_letter" and "newsletter" remain.

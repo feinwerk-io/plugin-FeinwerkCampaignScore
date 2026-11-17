@@ -14,6 +14,7 @@ use Piwik\API\Request;
 use Piwik\Common;
 use Piwik\DataTable;
 use Piwik\Http\BadRequestException;
+use Piwik\Plugins\FeinwerkCampaignScore\Http\InvalidInputException;
 use Piwik\NumberFormatter;
 use Piwik\Piwik;
 use Piwik\Plugins\FeinwerkCampaignScore\API;
@@ -106,7 +107,7 @@ class GetAllSites extends Widget
                     'findings' => $formatter->formatNumber((int) $row->getColumn('findings')),
                 ];
             }
-        } catch (BadRequestException | \InvalidArgumentException $e) {
+        } catch (InvalidInputException | BadRequestException | \InvalidArgumentException $e) {
             $error = Piwik::translate('FeinwerkCampaignScore_ErrorSinglePeriod');
         } catch (\Exception $e) {
             $error = Piwik::translate('FeinwerkCampaignScore_ErrorLoading');

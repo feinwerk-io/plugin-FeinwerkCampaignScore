@@ -39,7 +39,12 @@ class PluginMetadataTest extends TestCase
 
         $this->assertSame(self::PLUGIN, $plugin['name']);
         $this->assertSame('GPL v3+', $plugin['license']);
-        $this->assertSame('https://feinwerk.io', $plugin['homepage']);
+        // listed on the Matomo Marketplace: the plugin website is the store page with the Marketplace campaign
+        // (house docs marketplace-listings.md, Peter 2026-11-17); the author's homepage stays feinwerk.io
+        $this->assertSame(
+            'https://plugins.feinwerk.io/en/plugins/FeinwerkCampaignScore?mtm_campaign=matomo-marketplace&mtm_source=FeinwerkCampaignScore',
+            $plugin['homepage']
+        );
         $this->assertSame(
             [['name' => 'Peter Boehlke, Feinwerk.io', 'email' => 'support@feinwerk.io', 'homepage' => 'https://feinwerk.io']],
             $plugin['authors']

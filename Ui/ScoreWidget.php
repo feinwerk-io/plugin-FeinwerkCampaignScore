@@ -18,8 +18,9 @@ use Piwik\Piwik;
 use Piwik\Plugin\Manager as PluginManager;
 use Piwik\Plugins\FeinwerkCampaignScore\Categories\CampaignScoreSubcategory;
 use Piwik\Plugins\FeinwerkCampaignScore\Data\CampaignReader;
-use Piwik\Plugins\FeinwerkCampaignScore\Data\ConventionExport;
 use Piwik\Plugins\FeinwerkCampaignScore\Feedback\FeedbackBar;
+use Piwik\Plugins\FeinwerkCampaignScore\Promo\GuideBanner;
+use Piwik\Plugins\FeinwerkCampaignScore\Promo\PremiumPromo;
 use Piwik\Plugins\FeinwerkCampaignScore\Promo\PromoCard;
 use Piwik\Plugins\FeinwerkCampaignScore\Promo\PromoLine;
 use Piwik\Site;
@@ -27,9 +28,10 @@ use Piwik\Url;
 use Piwik\View;
 
 /**
- * Renders templates/_scoreCard.twig for the current website, period and segment: on the report page the score alone
- * (the findings table follows), in the dashboard widget the score, the three largest problems, a link to the report
- * the card for Feinwerk Campaigns (Promo/PromoCard.php) and the feedback line (no tip line in the widget, Peter 2026-11-12).
+ * Renders templates/_scoreCard.twig for the current website, period and segment: on the report page the score with its
+ * downloads (the findings table follows), and where promotions show the guide to Feinwerk Campaigns beside it
+ * (templates/_scoreSplit.twig); in the dashboard widget the score, the three largest problems, a link to the report, the
+ * card for Feinwerk Campaigns (Promo/PromoCard.php) and the feedback line (no tip line in the widget, Peter 2026-11-12).
  */
 final class ScoreWidget
 {
@@ -60,8 +62,8 @@ final class ScoreWidget
         }
 
         $formatter = NumberFormatter::getInstance();
-        $view = new View('@FeinwerkCampaignScore/_scoreCard');
-        $view->card = ScoreCard::variables(
+        $embedded = FeedbackBar::isEmbedded(Piwik::getModule(), Common::getRequestVar('disableLink', 0, 'int'));
+        $card = ScoreCard::variables(
             $scoreRow ? $scoreRow->getColumns() : [],
             $findings,
             PluginManager::getInstance()->isPluginActivated(CampaignReader::MCR),
@@ -75,21 +77,42 @@ final class ScoreWidget
                 return (string) $formatter->formatPercent($percent, 0);
             }
         );
+        // nothing to download without campaign visits
+        $downloads = $asDashboardWidget || empty($card['hasData'])
+            ? []
+            : self::downloads($idSite, $period, $date, $params['segment']);
+        // the report page with promotions: the guide to Feinwerk Campaigns beside the score card, then the paid plugins
+        $guide = null;
+        if (!$asDashboardWidget) {
+            $score = $scoreRow && !empty($card['hasData']) && is_numeric($scoreRow->getColumn('score'))
+                ? (float) $scoreRow->getColumn('score')
+                : null;
+            $guide = GuideBanner::variables(PromoLine::shownToCurrentUser(), $embedded, $score,
+                $downloads[1]['url'] ?? null, PromoLine::language(), [Piwik::class, 'translate'],
+                PromoLine::shownToCurrentUser() && PromoLine::demo());
+        }
+
+        $view = new View($guide !== null ? '@FeinwerkCampaignScore/_scoreSplit' : '@FeinwerkCampaignScore/_scoreCard');
+        $view->card = $card;
+        $view->guide = $guide;
+        $view->premium = $guide !== null ? PremiumPromo::plugins() : [];
+        $view->askSuperUser = $view->premium !== [] ? PremiumPromo::askSuperUser() : '';
+        $view->premiumDays = $guide !== null && $guide['demo'] ? 0 : GuideBanner::DAYS;
+        $view->premiumDemo = $guide !== null && $guide['demo'];
+        $view->premiumLabel = Piwik::translate('FeinwerkCampaignScore_GuideLabel');
+        $view->premiumCta = Piwik::translate('FeinwerkCampaignScore_GuideCta');
+        $view->premiumDismiss = Piwik::translate('FeinwerkCampaignScore_GuideDismiss');
         $view->asDashboardWidget = $asDashboardWidget;
         $view->sparkline = self::sparkline($idSite, $period, $date, $params['segment']);
         $view->sparklineWidth = ScoreCard::SPARK_WIDTH;
         $view->sparklineHeight = ScoreCard::SPARK_HEIGHT;
         $view->reportUrl = self::reportUrl($idSite, $period, $date);
-        $view->downloads = $asDashboardWidget ? [] : self::downloads($idSite, $period, $date, $params['segment']);
-        // where the exported convention is used: a link to Feinwerk Campaigns, for those who may see promotions
-        $view->importLink = $view->downloads !== [] && PromoLine::shownToCurrentUser()
-            ? ['url' => ConventionExport::IMPORT_URL, 'label' => Piwik::translate('FeinwerkCampaignScore_OpenConventionImport')]
-            : null;
-        $embedded = FeedbackBar::isEmbedded(Piwik::getModule(), Common::getRequestVar('disableLink', 0, 'int'));
+        $view->downloads = $downloads;
         $view->feedback = $asDashboardWidget && !$embedded ? FeedbackBar::forPage(FeedbackBar::TOPIC_WIDGET, $idSite) : '';
         // the card for Feinwerk Campaigns in the dashboard widget (house blueprint for dashboard widgets)
         $view->promoCard = $asDashboardWidget
-            ? PromoCard::variables(PromoLine::shownToCurrentUser(), $embedded, PromoLine::language(), [Piwik::class, 'translate'])
+            ? PromoCard::variables(PromoLine::shownToCurrentUser(), $embedded, PromoLine::language(), [Piwik::class, 'translate'],
+                PromoLine::shownToCurrentUser() && PromoLine::demo())
             : null;
 
         return $view->render();

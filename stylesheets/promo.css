@@ -50,6 +50,31 @@
     margin-left: 0;
 }
 
+/* Other plugins' CSS may style the tip line without the ready attribute, for example `.fwpromo-line { position:
+   relative; padding-right: 24px }` with an absolutely placed hide control at the right edge (Tracking Spam Score 5.0.1,
+   seen on stats 2026-11-15). In Matomo's merged CSS that moves every plugin's × away from the link; these rules outrank
+   such class-only rules in any load order, so the × stays right after the link. */
+.fwpromo-line[data-fwpromo-ready] {
+    position: static;
+    padding: 0;
+}
+
+.fwpromo-line[data-fwpromo-ready] .fwpromo-line__dismiss {
+    position: static;
+}
+
+/* the link, and the Feinwerk logo at the end of the row (templates/_feinwerkLogo.twig) */
+.fwpromo-box__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+}
+
+.fwpromo-box__foot .fwlogo {
+    margin-left: auto;
+}
+
 .fwpromo-line__link,
 .fwpromo-box__link {
     color: var(--theme-color-link, #1976d2);
@@ -88,8 +113,8 @@
     gap: 12px;
     margin: 0 0 20px;
     padding: 12px 14px 12px 16px;
-    background: var(--theme-color-widget-background, #fff);
-    border: 1px solid var(--theme-color-widget-border, #e0e0e0);
+    background: var(--theme-color-background-contrast, #fff);
+    border: 1px solid var(--theme-color-background-tinyContrast, #e0e0e0);
     border-left: 4px solid var(--theme-color-brand, #43a047);
     border-radius: 4px;
     font-size: 14px;

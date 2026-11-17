@@ -1,10 +1,11 @@
-{# The card in a dashboard widget (Promo/PromoCard.php): hidden until javascripts/promocard.js has checked the 30 days.
-   The mark is inline, nothing is loaded from outside. #}
-<div class="fwpromo-card" data-fwpromo-id="{{ promoCard.id }}" data-fwpromo-days="{{ promoCard.days }}">
+{# The kit's card in a dashboard widget, one card (Promo/PromoCard.php; Page Filter Report docs/footer.md "The card in
+   dashboard widgets"): hidden until javascripts/promocard.js has checked the 30 days. The sentence keeps to two lines,
+   the rest is in its title. The mark is inline, nothing is loaded from outside. #}
+<div class="fwpromo-card" data-fwpromo-id="{{ promoCard.id }}" data-fwpromo-days="{{ promoCard.days }}"{% if promoCard.demo %} data-fwpromo-demo="1"{% endif %}>
     <span class="fwpromo-card__mark"><svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><defs><radialGradient id="fwpromoCardGlow" cx="78%" cy="18%" r="95%"><stop offset="0" stop-color="#155450"/><stop offset=".7" stop-color="#0a1514"/></radialGradient></defs><rect width="32" height="32" rx="7" fill="url(#fwpromoCardGlow)"/><g fill="#3f8e83"><circle cx="8.6" cy="8.6" r="2"/><circle cx="23.4" cy="8.6" r="2"/><circle cx="8.6" cy="23.4" r="2"/><circle cx="23.4" cy="23.4" r="2"/></g><g fill="#9fd8d2"><circle cx="16" cy="8.6" r="2.5"/><circle cx="8.6" cy="16" r="2.5"/><circle cx="23.4" cy="16" r="2.5"/><circle cx="16" cy="23.4" r="2.5"/></g><circle cx="16" cy="16" r="4.3" fill="#8ee6c8"/></svg></span>
     <span class="fwpromo-card__body">
         <strong>{{ promoCard.name }}</strong>
-        <span>{{ promoCard.text }}</span>
+        <span title="{{ promoCard.text }}">{{ promoCard.text }}</span>
     </span>
     <a class="fwpromo-card__link" href="{{ promoCard.url }}" target="_blank" rel="noopener">{{ promoCard.link }}</a>
     <button type="button" class="fwpromo-card__close" title="{{ promoCard.dismiss }}" aria-label="{{ promoCard.dismiss }}"><span aria-hidden="true">&times;</span></button>

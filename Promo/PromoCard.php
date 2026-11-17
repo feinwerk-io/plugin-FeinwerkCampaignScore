@@ -32,7 +32,7 @@ final class PromoCard
      * @param callable(string): string $translate
      * @return array{id: string, days: int, name: string, text: string, link: string, url: string, dismiss: string}|null
      */
-    public static function variables(bool $shown, bool $embedded, string $language, callable $translate): ?array
+    public static function variables(bool $shown, bool $embedded, string $language, callable $translate, bool $demo = false): ?array
     {
         if (!$shown || $embedded) {
             return null;
@@ -40,7 +40,8 @@ final class PromoCard
 
         return [
             'id' => self::ID,
-            'days' => self::DAYS,
+            'days' => $demo ? 0 : self::DAYS,
+            'demo' => $demo,
             'name' => self::PRODUCT,
             'text' => $translate('FeinwerkCampaignScore_PromoCardText'),
             'link' => $translate('FeinwerkCampaignScore_PromoCardLink'),

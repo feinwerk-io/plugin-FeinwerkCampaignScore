@@ -58,6 +58,14 @@ class PromoCardTest extends TestCase
     {
         $css = (string) file_get_contents(__DIR__ . '/../../../stylesheets/promocard.css');
 
-        $this->assertMatchesRegularExpression('/\.fwpromo-card:not\(\[data-fwpromo-ready\]\)\s*\{\s*display:\s*none/', $css);
+        $this->assertSame(1, preg_match('/\.fwpromo-card:not\(\[data-fwpromo-ready\]\)\s*\{\s*display:\s*none/', $css));
+    }
+
+    /** Demo mode (test instances): the card's × keeps it away for the browser session only. */
+    public function test_inDemoTheCardHidesForTheSessionOnly(): void
+    {
+        $card = PromoCard::variables(true, false, 'de', [self::class, 'translate'], true);
+
+        $this->assertSame([0, true], [$card['days'], $card['demo']]);
     }
 }

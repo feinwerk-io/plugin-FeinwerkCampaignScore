@@ -1,0 +1,73 @@
+{# The report page with promotions (Ui/ScoreWidget.php): the score card and, beside it 50/50, the guide to Feinwerk
+   Campaigns (Promo/GuideBanner.php, Peter 2026-11-13) followed by the paid Feinwerk plugins (Promo/PremiumPromo.php:
+   the connector's plugin window for super users, the public store page in a new tab for admins with one line on who
+   can install it, askSuperUser).
+   They are one rotation of the kit (javascripts/promocard.js): the items wait in an inert template, the first one not
+   hidden shows, its x hides it for 30 days and the next follows; when none is left the group goes and the score card
+   takes the whole width (stylesheets/guide.css). Matomo's outer card is hidden there, the score card has its own.
+   Links stay inside Matomo or open feinwerk.io pages in a new tab; nothing is loaded from outside. The Feinwerk logo
+   closes each banner's actions row (templates/_feinwerkLogo.twig, Peter: "in die banner, wo möglich bitte generell noch
+   das feinwerk-logo unterbringen"). #}
+<div class="fwcs-split">
+    <div class="card fwcs-split__main">
+        <div class="card-content">
+            <h2 class="card-title">{{ 'FeinwerkCampaignScore_CampaignScore'|translate }}</h2>
+            {% include '@FeinwerkCampaignScore/_scoreCard.twig' with {split: true} %}
+        </div>
+    </div>
+    <div class="fwcs-split__side" data-fwpromo-rotation="banner"><template>
+        {% if guide %}
+            <aside class="fwcs-banner fwcs-banner--guide" data-fwpromo-id="{{ guide.id }}" data-fwpromo-days="{{ guide.days }}"{% if guide.demo %} data-fwpromo-demo="1"{% endif %}
+                   aria-label="{{ guide.label }}">
+                <div class="fwcs-banner__head">
+                    <div class="fwcs-banner__art" aria-hidden="true">{% include '@FeinwerkCampaignScore/_guideArt.twig' with {artId: 'Guide'} %}</div>
+                    <div class="fwcs-banner__intro">
+                        <span class="fwcs-banner__label">{{ guide.label }}</span>
+                        <h3 class="fwcs-banner__title">{{ guide.title }}</h3>
+                        <p class="fwcs-banner__text">{{ guide.text }}</p>
+                    </div>
+                </div>
+                <div class="fwcs-guide__title">{{ guide.guideTitle }}</div>
+                <ol class="fwcs-guide__steps">
+                    {% for step in guide.steps %}
+                        <li class="fwcs-step{% if loop.first %} fwcs-step--next{% endif %}">
+                            <a class="fwcs-step__link" href="{{ step.url }}" {% if step.download %}rel="noopener" download{% else %}target="_blank" rel="noopener"{% endif %}>
+                                <span class="fwcs-step__num">{{ loop.index }}</span>
+                                <span class="fwcs-step__body"><strong>{{ step.title }}</strong><small>{{ step.text }}</small></span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ol>
+                <div class="fwcs-banner__actions">
+                    <a class="btn fwcs-banner__cta" href="{{ guide.url }}" target="_blank" rel="noopener">{{ guide.cta }} <span aria-hidden="true">&rarr;</span></a>
+                    {% include '@FeinwerkCampaignScore/_feinwerkLogo.twig' %}
+                </div>
+                <button type="button" class="fwcs-banner__close" data-fwpromo-close title="{{ guide.dismiss }}"
+                        aria-label="{{ guide.dismiss }}"><span aria-hidden="true">&times;</span></button>
+            </aside>
+        {% endif %}
+        {% for plugin in premium %}
+            <aside class="fwcs-banner fwcs-banner--premium" data-fwpromo-id="{{ plugin.id }}" data-fwpromo-days="{{ premiumDays }}"{% if premiumDemo %} data-fwpromo-demo="1"{% endif %}
+                   aria-label="{{ premiumLabel }}">
+                <div class="fwcs-banner__head">
+                    <div class="fwcs-banner__art fwcs-premium__art" aria-hidden="true">
+                        {% if plugin.image %}<img src="{{ plugin.image }}" alt="" loading="lazy">{% else %}<span class="fwcs-premium__monogram">{{ plugin.name|first|upper }}</span>{% endif %}
+                    </div>
+                    <div class="fwcs-banner__intro">
+                        <span class="fwcs-banner__label">{{ premiumLabel }}</span>
+                        <h3 class="fwcs-banner__title">{{ plugin.name }}</h3>
+                        {% if plugin.price %}<div class="fwcs-premium__price">{{ plugin.price }}</div>{% endif %}
+                    </div>
+                </div>
+                {% if plugin.description %}<p class="fwcs-banner__text fwcs-premium__text" title="{{ plugin.description }}">{{ plugin.description }}</p>{% endif %}
+                {% if plugin.external and askSuperUser %}<p class="fwcs-premium__note">{{ askSuperUser }}</p>{% endif %}
+                <div class="fwcs-banner__actions">
+                    <a class="btn fwcs-banner__cta" href="{{ plugin.url }}"{% if plugin.external %} target="_blank" rel="noopener"{% endif %}>{{ premiumCta }} <span aria-hidden="true">&rarr;</span></a>
+                    {% include '@FeinwerkCampaignScore/_feinwerkLogo.twig' %}
+                </div>
+                <button type="button" class="fwcs-banner__close" data-fwpromo-close title="{{ premiumDismiss }}"
+                        aria-label="{{ premiumDismiss }}"><span aria-hidden="true">&times;</span></button>
+            </aside>
+        {% endfor %}
+    </template></div>
+</div>

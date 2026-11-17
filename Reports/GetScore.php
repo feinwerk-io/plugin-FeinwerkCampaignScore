@@ -45,6 +45,7 @@ class GetScore extends Report
         return ['score' => Piwik::translate('FeinwerkCampaignScore_ScoreMetricDocumentation')];
     }
 
+    /** Matomo's evolution graph; for this report it shows gaps for periods without campaign visits (Ui/ScoreUnit.php). */
     public function getDefaultTypeViewDataTable()
     {
         return Evolution::ID;

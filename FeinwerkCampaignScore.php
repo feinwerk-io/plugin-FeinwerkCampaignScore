@@ -14,6 +14,8 @@ use Piwik\Option;
 use Piwik\Plugins\FeinwerkCampaignScore\Feedback\PluginFeedback;
 use Piwik\Plugins\FeinwerkCampaignScore\Promo\PromoPlacements;
 use Piwik\Plugins\FeinwerkCampaignScore\Ui\ScoreUnit;
+use Piwik\Plugins\FeinwerkCampaignScore\Ui\ScoreEvolution;
+use Piwik\Plugins\CoreVisualizations\Visualizations\JqplotGraph\Evolution;
 
 class FeinwerkCampaignScore extends \Piwik\Plugin
 {
@@ -31,7 +33,29 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
             'UsersManager.deleteUser' => 'onDeleteUser',
             // the score is a percentage in evolution graphs (Matomo 6 forecasts the open period by the unit)
             'Metrics.getEvolutionUnit' => 'getEvolutionUnit',
+            // Campaign Score over time: a gap for periods without campaign visits instead of 0 % (Peter, 2026-11-14)
+            'ViewDataTable.filterViewDataTable' => 'useScoreEvolution',
         ];
+    }
+
+    /** @param array<string, string> $visualizations */
+    public function useScoreEvolution(&$visualizations)
+    {
+        try {
+            $visualizations = ScoreUnit::visualizations($visualizations, self::scoreRequest(), Evolution::ID, ScoreEvolution::class);
+        } catch (\Throwable $e) {
+            // Matomo's own graph stays
+        }
+    }
+
+    /** @return array<string, string> the request parameters that tell the plugin's own report */
+    private static function scoreRequest(): array
+    {
+        $request = [];
+        foreach (['module', 'action', 'apiModule', 'apiAction', 'moduleToWidgetize', 'actionToWidgetize'] as $name) {
+            $request[$name] = Common::getRequestVar($name, '', 'string');
+        }
+        return $request;
     }
 
     /**
@@ -44,11 +68,7 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
         if (!empty($unit)) {
             return;
         }
-        $request = [];
-        foreach (['module', 'action', 'apiModule', 'apiAction', 'moduleToWidgetize', 'actionToWidgetize'] as $name) {
-            $request[$name] = Common::getRequestVar($name, '', 'string');
-        }
-        $unit = ScoreUnit::forColumn((string) $column, $request) ?? $unit;
+        $unit = ScoreUnit::forColumn((string) $column, self::scoreRequest()) ?? $unit;
     }
 
     public function getJsFiles(&$jsFiles)
@@ -72,7 +92,9 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
     {
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/campaignscore.css';
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/promo.css';
+        $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/feinwerklogo.css';
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/promocard.css';
+        $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/guide.css';
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/feedback.css';
     }
 
