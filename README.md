@@ -265,6 +265,22 @@ The same line in the section `[FeinwerkMarketplaceConnector]` switches them off 
 versions of the Feinwerk Marketplace Connector (on the Matomo Marketplace) also have the setting "Show notes on other
 Feinwerk offers".
 
+In Matomo for WordPress the plugin recommends no paid Feinwerk plugins: they cannot be installed there yet.
+
+### Installing the Feinwerk Connector
+
+While the free Feinwerk Marketplace Connector is not active, super users find **Administration → Feinwerk Plugins →
+Install Feinwerk Connector**. One click installs and activates it from Matomo's Marketplace, after Matomo's usual
+password check. Where Matomo cannot install plugins itself (for example without internet access or with plugin
+installs switched off), the page explains the manual way; in Matomo for WordPress it leads to the Marketplace in
+WordPress. This entry is not a tip, so `promotions = 0` leaves it in place. To remove it for all Feinwerk plugins, add
+to `config/config.ini.php`:
+
+    [FeinwerkMarketplaceConnector]
+    connector_installer = 0
+
+The same line in `[FeinwerkCampaignScore]` removes only Campaign Score's entry; another Feinwerk plugin may then show it.
+
 ## License
 
 GPL v3 or later, see `LICENSE`.

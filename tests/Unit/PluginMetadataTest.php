@@ -45,6 +45,8 @@ class PluginMetadataTest extends TestCase
             'https://plugins.feinwerk.io/en/plugins/FeinwerkCampaignScore?mtm_campaign=matomo-marketplace&mtm_source=FeinwerkCampaignScore',
             $plugin['homepage']
         );
+        // the Preview tab: the short redirect on the demo (plugins.matomo.org double-encodes "&" in a long link)
+        $this->assertSame(['demo_url' => 'https://demo.feinwerk.io/demo/campaign-score'], $plugin['preview'] ?? null);
         $this->assertSame(
             [['name' => 'Peter Boehlke, Feinwerk.io', 'email' => 'support@feinwerk.io', 'homepage' => 'https://feinwerk.io']],
             $plugin['authors']

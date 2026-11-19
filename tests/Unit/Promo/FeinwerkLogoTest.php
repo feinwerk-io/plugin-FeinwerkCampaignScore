@@ -30,14 +30,29 @@ class FeinwerkLogoTest extends TestCase
         self::assertSame(0, preg_match('/\burl\(|@import|@font-face/', $this->file('stylesheets/feinwerklogo.css')));
     }
 
-    public function test_banners_and_boxes_show_it_the_lines_and_the_card_do_not(): void
+    /** Peter, 2026-11-17: "feinwerk logo immer dabei": also at the start of the tip line; the feedback row, the card and the findings link stay without. */
+    public function test_banners_boxes_and_the_tip_line_show_it_the_feedback_row_the_card_and_the_findings_link_do_not(): void
     {
-        self::assertSame(1, substr_count($this->file('templates/_promoBox.twig'), self::INCLUDE));
+        foreach (['templates/_promoBox.twig', 'templates/_promo.twig'] as $with) {
+            self::assertSame(1, substr_count($this->file($with), self::INCLUDE), $with);
+        }
         // the guide and each paid plugin banner beside the score card
         self::assertSame(2, substr_count($this->file('templates/_scoreSplit.twig'), self::INCLUDE));
-        foreach (['templates/_promo.twig', 'templates/_feedback.twig', 'templates/_promoCard.twig', 'templates/_footerLink.twig'] as $without) {
+        $line = $this->file('templates/_promo.twig');
+        self::assertLessThan(strpos($line, 'fwpromo-line__text'), strpos($line, self::INCLUDE), 'the logo starts the line');
+        foreach (['templates/_feedback.twig', 'templates/_promoCard.twig', 'templates/_footerLink.twig'] as $without) {
             self::assertStringNotContainsString('_feinwerkLogo', $this->file($without), $without);
         }
+    }
+
+    /** In the tip line at text height, and on narrow screens only the round mark (no size containment on the line). */
+    public function test_in_the_tip_line_at_text_height_and_only_the_mark_on_narrow_screens(): void
+    {
+        $css = (string) preg_replace('~/\*.*?\*/~s', '', $this->file('stylesheets/promo.css'));
+
+        self::assertSame(0, preg_match('/container-type/', $css), 'containment could collapse the line elsewhere');
+        self::assertSame(1, preg_match('/\.fwpromo-line \.fwlogo \.fwlogo__mark\s*\{[^}]*width:\s*14px[^}]*height:\s*14px/', $css));
+        self::assertSame(1, preg_match('/@media \(max-width:\s*600px\)\s*\{\s*\.fwpromo-line \.fwlogo \.fwlogo__word\s*\{\s*display:\s*none/', $css));
     }
 
     public function test_light_and_dark_use_the_colours_of_the_store_logo(): void

@@ -191,6 +191,20 @@ class PremiumPromoTest extends TestCase
         self::assertCount(2, PremiumPromo::choose($connector, $whole, 0), 'without demo: the connector list only');
     }
 
+    /** Matomo for WordPress: paid plugins cannot be installed there yet, so no tile and no card, in demo too. */
+    public function test_no_recommendation_inside_wordpress(): void
+    {
+        $whole = static function (): array {
+            return PaidPluginCatalog::all('de', static function (string $key): string {
+                return $key;
+            }, 'FeinwerkCampaignScore');
+        };
+
+        self::assertSame([], PremiumPromo::choose([], $whole, 0, false, true));
+        self::assertSame([], PremiumPromo::choose([], $whole, 0, true, true), 'demo too');
+        self::assertNotSame([], PremiumPromo::choose([], $whole, 0, true, false));
+    }
+
     /** Admins read who can install a plugin from the store; the card carries it as the link's title. */
     public function test_the_templates_open_store_pages_in_a_new_tab_with_the_note_for_admins(): void
     {

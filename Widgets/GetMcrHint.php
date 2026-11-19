@@ -12,6 +12,8 @@ namespace Piwik\Plugins\FeinwerkCampaignScore\Widgets;
 use Piwik\Piwik;
 use Piwik\Plugin\Manager as PluginManager;
 use Piwik\Plugins\FeinwerkCampaignScore\Categories\CampaignScoreSubcategory;
+use Piwik\Plugins\FeinwerkCampaignScore\ConnectorInstaller\ConnectorInstaller;
+use Piwik\Plugins\FeinwerkCampaignScore\Promo\PromoLine;
 use Piwik\Plugins\FeinwerkCampaignScore\Ui\McrHint;
 use Piwik\Widget\Widget;
 use Piwik\Widget\WidgetConfig;
@@ -46,7 +48,13 @@ class GetMcrHint extends Widget
             return '';
         }
         $isSuperUser = Piwik::hasUserSuperUserAccess();
-        $link = McrHint::link($state, $isSuperUser, $manager->isPluginActivated('Marketplace'));
+        $link = McrHint::link(
+            $state,
+            $isSuperUser,
+            $manager->isPluginActivated('Marketplace'),
+            PromoLine::isWordPress(),
+            ConnectorInstaller::wordpressUrl()
+        );
         return $this->renderTemplate('_mcrHint', [
             'text' => Piwik::translate($state === McrHint::ACTIVATE ? 'FeinwerkCampaignScore_McrHintActivate' : 'FeinwerkCampaignScore_McrHintInstall'),
             'askSuperUser' => !$isSuperUser ? Piwik::translate('FeinwerkCampaignScore_McrHintAskSuperUser') : null,

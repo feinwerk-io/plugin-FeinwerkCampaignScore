@@ -1,9 +1,3 @@
-/*!
- * Matomo - free/libre analytics platform
- * @link https://matomo.org
- * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- */
-
 /*
  * Feinwerk promotion kit: the card in dashboard widgets and rotating promotions (docs/footer.md, docs/promo-kit.md).
  *

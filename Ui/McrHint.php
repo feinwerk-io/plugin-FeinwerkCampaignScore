@@ -32,17 +32,28 @@ final class McrHint
     /**
      * Where the box links to: super users to Matomo's Marketplace (or its plugin list to activate), everyone else to
      * the public plugin page; null when only a super user can act and there is no page to show.
+     * Inside Matomo for WordPress Matomo's Marketplace and plugin list are switched off (HTTP 403 and 500, PluginLead's
+     * test of 2026-11-17): super users go to the Marketplace in WordPress ($wordpressUrl, or the public plugin page
+     * when it is unknown), and the activate link goes (plugins are switched on in WordPress there).
      *
      * @return array{url: string, label: string, external: bool}|null label is a translation key
      */
-    public static function link(string $state, bool $isSuperUser, bool $marketplace): ?array
-    {
+    public static function link(
+        string $state,
+        bool $isSuperUser,
+        bool $marketplace,
+        bool $wordpress = false,
+        string $wordpressUrl = ''
+    ): ?array {
         if ($state === self::ACTIVATE) {
-            return $isSuperUser
+            return $isSuperUser && !$wordpress
                 ? ['url' => 'index.php?module=CorePluginsAdmin&action=plugins', 'label' => 'FeinwerkCampaignScore_McrHintManage', 'external' => false]
                 : null;
         }
-        if ($isSuperUser && $marketplace) {
+        if ($isSuperUser && $wordpress && $wordpressUrl !== '') {
+            return ['url' => $wordpressUrl, 'label' => 'FeinwerkCampaignScore_McrHintMarketplace', 'external' => false];
+        }
+        if ($isSuperUser && $marketplace && !$wordpress) {
             return [
                 'url' => 'index.php?module=Marketplace&action=overview#?popover=browsePluginDetail%243A' . self::PLUGIN,
                 'label' => 'FeinwerkCampaignScore_McrHintMarketplace',

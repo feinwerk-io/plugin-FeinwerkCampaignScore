@@ -125,11 +125,112 @@ class PromoLineTest extends TestCase
         self::assertSame([0, true], [$demo['dismissDays'], $demo['demo']]);
         foreach (['_promo.twig', '_promoBox.twig'] as $template) {
             self::assertStringContainsString(
-                '{% if promo.demo|default(false) %} data-fwpromo-demo="1"{% endif %}',
+                '{% if promo.demo ?? false %} data-fwpromo-demo="1"{% endif %}',
                 (string) file_get_contents(__DIR__ . '/../../../templates/' . $template),
                 $template
             );
         }
+    }
+
+    /** Peter, 2026-11-11: "vermehrt": the connector message about every second time, the others in turn between. */
+    /**
+     * The kit's rotation: the connector message about every second day, the others in turn. Campaign Score prefers its
+     * own campaigns message (PREFERRED, Peter 2026-11-12), so the rotation only matters without it.
+     */
+    public function test_the_connector_message_shows_about_every_second_time(): void
+    {
+        $candidates = ['hosting', 'connector', 'sentinel'];
+        $days = [];
+        for ($day = 0; $day < 12; $day++) {
+            $days[] = PromoLine::choose($candidates, $day);
+        }
+
+        self::assertSame(['connector', 'hosting', 'connector', 'sentinel', 'connector', 'hosting'], array_slice($days, 0, 6));
+        self::assertSame(6, count(array_keys($days, 'connector', true)));
+        self::assertSame('connector', PromoLine::choose(['connector'], 1), 'alone it shows every day');
+        for ($day = 0; $day < 4; $day++) {
+            self::assertSame('campaigns', PromoLine::choose(['campaigns', 'hosting', 'connector', 'sentinel'], $day), 'the preferred message wins');
+        }
+        $installed = static function (string $plugin): bool {
+            return $plugin === 'FeinwerkMarketplaceConnector';
+        };
+        self::assertNotContains('connector', PromoLine::candidates($installed), 'not once the connector is installed');
+    }
+
+    /**
+     * Super user with a usable Marketplace: the connector in the instance's own Marketplace (no campaign parameters).
+     * Super user without: the ZIP download. Admin: plugins.matomo.org and a note that the super user can install it.
+     */
+    public function test_the_connector_message_leads_each_user_where_they_can_act(): void
+    {
+        $translate = static function (string $key): string {
+            return '[' . $key . ']';
+        };
+        $super = PromoLine::variables('connector', 'de', $translate, 'line', false, ['superUser' => true, 'marketplace' => true]);
+        $admin = PromoLine::variables('connector', 'en', $translate, 'line', false, ['superUser' => false, 'marketplace' => true]);
+
+        self::assertSame(['index.php?module=Marketplace&action=overview#?popover=browsePluginDetail%243AFeinwerkMarketplaceConnector', false, ''],
+            [$super['url'], $super['external'], $super['note']]);
+        self::assertSame(['https://plugins.matomo.org/FeinwerkMarketplaceConnector?mtm_campaign=plugin-promo&mtm_source=FeinwerkCampaignScore&mtm_content=connector', true, '[FeinwerkCampaignScore_PremiumAskSuperUser]'],
+            [$admin['url'], $admin['external'], $admin['note']]);
+        self::assertSame('[FeinwerkCampaignScore_PromoConnectorLink]', $admin['link']);
+
+        $line = (string) file_get_contents(__DIR__ . '/../../../templates/_promo.twig');
+        self::assertStringContainsString('{% if promo.external ?? true %} target="_blank" rel="noopener"{% endif %}', $line);
+        self::assertStringContainsString('{% if promo.note ?? \'\' %} title="{{ promo.note }}"{% endif %}', $line);
+    }
+
+    /** Matomo for WordPress (Peter, 2026-11-17: "Dort nicht werben"): no connector message there, in demo too. */
+    public function test_no_connector_message_inside_wordpress(): void
+    {
+        $nothing = static function (): bool {
+            return false;
+        };
+
+        self::assertSame(['campaigns', 'hosting', 'sentinel'], PromoLine::candidates($nothing, false, false, true));
+        self::assertNotContains('connector', PromoLine::candidates($nothing, true, true, true), 'demo too');
+        self::assertContains('connector', PromoLine::candidates($nothing, false, false, false));
+        self::assertTrue(PromoLine::isWordPressBy(true, true));
+        self::assertFalse(PromoLine::isWordPressBy(true, false), 'ABSPATH alone is not Matomo for WordPress');
+        self::assertFalse(PromoLine::isWordPressBy(false, true));
+        self::assertFalse(PromoLine::isWordPress(), 'the test runs outside WordPress');
+    }
+
+    /**
+     * current()'s decisions, through lineFor(): WordPress and a super user without a usable Marketplace get no connector
+     * message (Peter, 2026-11-17), a super user with one the Marketplace link, an admin plugins.matomo.org plus the note
+     * with Matomo's own word for the super user.
+     */
+    public function test_the_line_for_each_kind_of_user(): void
+    {
+        $nothing = static function (): bool {
+            return false;
+        };
+        $translate = static function (string $key, array $args = []): string {
+            return $key . ($args === [] ? '' : '(' . implode(',', $args) . ')');
+        };
+        $env = ['day' => 0, 'ecommerce' => false, 'demo' => false, 'wordpress' => false, 'superUser' => true, 'marketplace' => true];
+
+        // Campaign Score's line always leads to Feinwerk Campaigns, with its own sentence, for every kind of user
+        foreach ([
+            'super user' => $env,
+            'admin' => ['superUser' => false, 'marketplace' => false] + $env,
+            'super user without a usable Marketplace' => ['marketplace' => false] + $env,
+            'Matomo for WordPress' => ['wordpress' => true] + $env,
+            'Matomo for WordPress, demo' => ['wordpress' => true, 'demo' => true] + $env,
+        ] as $case => $user) {
+            for ($day = 0; $day < 4; $day++) {
+                $line = PromoLine::lineFor(['day' => $day] + $user, $nothing, $translate, 'de');
+                self::assertSame('campaigns', $line['id'] ?? null, $case . ', day ' . $day);
+                self::assertSame('FeinwerkCampaignScore_PromoCampaignsLineText', $line['text'], $case);
+                self::assertSame([true, ''], [$line['external'], $line['note']], $case);
+            }
+        }
+
+        // the kit's connector rules stay in force underneath: never inside WordPress, in demo too
+        self::assertContains('connector', PromoLine::candidates($nothing));
+        self::assertNotContains('connector', PromoLine::candidates($nothing, false, false, true));
+        self::assertNotContains('connector', PromoLine::candidates($nothing, false, true, true));
     }
 
     public function test_only_admins_and_super_users(): void
@@ -170,8 +271,8 @@ class PromoLineTest extends TestCase
         $nothing = static function (string $plugin): bool {
             return false;
         };
-        self::assertSame(['campaigns', 'hosting', 'sentinel'], PromoLine::candidates($nothing));
-        self::assertSame(['campaigns', 'hosting', 'capi', 'sentinel'], PromoLine::candidates($nothing, true));
+        self::assertSame(['campaigns', 'hosting', 'connector', 'sentinel'], PromoLine::candidates($nothing));
+        self::assertSame(['campaigns', 'hosting', 'capi', 'connector', 'sentinel'], PromoLine::candidates($nothing, true));
     }
 
     /**
@@ -211,6 +312,9 @@ class PromoLineTest extends TestCase
                 self::assertStringStartsWith('FeinwerkCampaignScore_Promo', $message[$field]);
             }
             foreach (['de', 'en'] as $language) {
+                if ($id === PromoLine::CONNECTOR_MESSAGE) {
+                    continue; // its link depends on the user: connectorUrl()
+                }
                 self::assertStringStartsWith('https://', $message['urls'][$language]);
             }
             self::assertArrayHasKey('placement', $message);
@@ -231,6 +335,8 @@ class PromoLineTest extends TestCase
             'text' => '[FeinwerkCampaignScore_PromoCampaignsLineText]',
             'link' => '[FeinwerkCampaignScore_PromoCampaignsLineLink]',
             'url' => PromoLine::url('campaigns', 'en'),
+            'external' => true,
+            'note' => '',
             'dismissDays' => 30,
             'demo' => false,
         ], PromoLine::variables('campaigns', 'en', $translate));

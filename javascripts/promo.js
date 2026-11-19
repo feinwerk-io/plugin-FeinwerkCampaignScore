@@ -1,9 +1,3 @@
-/*!
- * Matomo - free/libre analytics platform
- * @link https://matomo.org
- * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- */
-
 /*
  * Feinwerk promotion kit (docs/promo-kit.md; markup in templates/_promo.twig and templates/_promoBox.twig): the tip
  * line, the admin home banner and the context boxes.
@@ -12,16 +6,21 @@
  * - One notice per placement and page (data-fwpromo-placement; a line without it counts as "line"): when several
  *   reports or several Feinwerk plugins render the same placement, the first one that arrives stays, the others go.
  * Nothing is loaded and nothing is sent. Reports arrive and reload after the page, so new notices are prepared through
- * a MutationObserver and clicks are caught at the document. Plain script without a build and without jQuery. Several
- * Feinwerk plugins ship this file: the first copy on the page does the work (window.fwpromoKit).
+ * a MutationObserver and clicks are caught at the document. Plain script without a build and without jQuery.
+ * Several Feinwerk plugins ship this file, in different versions. window.fwpromoKit holds the version that runs: an equal
+ * or newer copy leaves the page to it. This copy (version 3) also runs after an older one (version 2: "the first copy
+ * wins", without the compact logo or session-only hiding in demo), fits the lines that copy showed, takes out demo
+ * notices hidden this session, and takes the clicks on the x first (capture phase), so no load order loses them
+ * (tests/js/run-promo-check.sh).
  */
 (function () {
     'use strict';
 
-    if (window.fwpromoKit) {
+    var VERSION = 3;
+    if ((window.fwpromoKit || 0) >= VERSION) {
         return;
     }
-    window.fwpromoKit = 2;
+    window.fwpromoKit = VERSION;
 
     var DAY = 86400000;
     var NOTICES = '.fwpromo-line, .fwpromo-box';
@@ -66,13 +65,55 @@
         }
     }
 
+    // The tip line starts with the Feinwerk logo. A line too short for the logo's word mark next to the sentence, its
+    // link and the x shows only the round mark (class fwpromo-line--compact); measured when the line shows and whenever
+    // its width changes, so a narrow dashboard widget gets it as well as a phone.
+    function fit(line) {
+        var logo = line.querySelector('.fwlogo');
+        var text = line.querySelector('.fwpromo-line__text');
+        var link = line.querySelector('.fwpromo-line__link');
+        if (!logo || !text) {
+            return;
+        }
+        line.classList.remove('fwpromo-line--compact');
+        if (text.clientWidth < 80 || logo.scrollWidth > logo.clientWidth + 1 || (link && link.scrollWidth > link.clientWidth + 1)) {
+            line.classList.add('fwpromo-line--compact');
+        }
+    }
+
+    var resizeObserver = typeof window.ResizeObserver === 'function'
+        ? new window.ResizeObserver(function (entries) {
+            entries.forEach(function (entry) {
+                fit(entry.target);
+            });
+        })
+        : null;
+
+    function watch(notice) {
+        if (!notice.classList.contains('fwpromo-line') || notice.hasAttribute('data-fwpromo-fit')) {
+            return;
+        }
+        notice.setAttribute('data-fwpromo-fit', '1');
+        fit(notice);
+        if (resizeObserver) {
+            resizeObserver.observe(notice);
+        }
+    }
+
     function prepare() {
         var notices = document.querySelectorAll(NOTICES);
         var shown = {};
         Array.prototype.forEach.call(notices, function (notice) {
-            if (notice.getAttribute('data-fwpromo-ready')) {
-                shown[placementOf(notice)] = true;
+            if (!notice.getAttribute('data-fwpromo-ready')) {
+                return;
             }
+            // shown by an older copy: a demo notice hidden this session goes, the others get the compact logo
+            if (notice.hasAttribute('data-fwpromo-demo') && dismissed(notice)) {
+                remove(notice);
+                return;
+            }
+            shown[placementOf(notice)] = true;
+            watch(notice);
         });
         Array.prototype.forEach.call(notices, function (notice) {
             if (notice.getAttribute('data-fwpromo-ready')) {
@@ -85,6 +126,7 @@
             }
             notice.setAttribute('data-fwpromo-ready', '1');
             shown[placement] = true;
+            watch(notice);
         });
     }
 
@@ -95,6 +137,8 @@
             return;
         }
         event.preventDefault();
+        // an older copy's handler (bubble phase) does not run as well
+        event.stopPropagation();
         var id = notice.getAttribute('data-fwpromo-id') || '';
         try {
             storage(notice).setItem(key(id), String(Date.now()));
@@ -106,7 +150,7 @@
                 remove(other);
             }
         });
-    });
+    }, true);
 
     function start() {
         prepare();

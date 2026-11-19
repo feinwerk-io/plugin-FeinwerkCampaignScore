@@ -54,6 +54,9 @@ final class PromoPlacements
      */
     public static function messageFor(string $placement, callable $isInstalled): ?string
     {
+        if ($placement === 'line') {
+            return null; // the tip line is no box: tip-line-only messages (connector) never fill one
+        }
         foreach (PromoLine::candidates($isInstalled, true, PromoLine::demo()) as $id) {
             if ((PromoLine::MESSAGES[$id]['placement'] ?? null) === $placement) {
                 return $id;

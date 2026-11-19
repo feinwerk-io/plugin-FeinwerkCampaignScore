@@ -1,7 +1,7 @@
 {
     "name": "FeinwerkCampaignScore",
     "description": "One score for how clean your campaign tracking is, with every spelling variant, odd medium and missing value and a fix for each.",
-    "version": "5.4.0",
+    "version": "5.5.0",
     "theme": false,
     "require": {
         "matomo": ">=5.0.0,<6.0.0-b1",
@@ -29,5 +29,8 @@
         "naming convention",
         "marketing",
         "score"
-    ]
+    ],
+    "preview": {
+        "demo_url": "https://demo.feinwerk.io/demo/campaign-score"
+    }
 }

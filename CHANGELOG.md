@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.5.0
+
+- New: super users who do not have the free Feinwerk Marketplace Connector active find "Install Feinwerk Connector" under Administration › Feinwerk Plugins. One click installs and activates it from Matomo's Marketplace, after Matomo's usual password check. Where Matomo cannot install plugins itself, the page explains the manual way; inside Matomo for WordPress it leads to the Marketplace in WordPress. `connector_installer = 0` in the section `[FeinwerkMarketplaceConnector]` of config.ini.php removes the entry for all Feinwerk plugins; in `[FeinwerkCampaignScore]` it removes only Campaign Score's own.
+- Matomo for WordPress: the info box on Marketing Campaigns Reporting now leads super users to the Marketplace in WordPress instead of Matomo pages that are switched off there, and no paid Feinwerk plugins are recommended there.
+- Notes on Feinwerk offers no longer get in each other's way when several Feinwerk plugins show them on the same page.
+- Campaign Score is now also available in French, Spanish and Italian.
+
 ## 5.4.0
 
 - Demo mode for test instances: `promotions_demo = 1` in the section `[FeinwerkMarketplaceConnector]` shows every note and every paid plugin, also the installed ones, and "×" hides them for the browser session only. Every off switch still wins.

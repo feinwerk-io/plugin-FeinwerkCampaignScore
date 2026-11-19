@@ -24,6 +24,8 @@ use Piwik\Version;
  *   its install link, admins the public store page), else its older Promotions::paidPluginsNotInstalled() (super users);
  * - otherwise the plugin's own fallback list (PaidPluginCatalog): the plugins the store sells, minus the ones present;
  * - nothing when promotions are switched off, here (`promotions = 0`) or in the connector (PromoLine::enabled()).
+ * Not inside Matomo for WordPress (Peter, 2026-11-17: "Dort nicht werben"): paid plugins cannot be installed there
+ * yet (store ZIPs are no WordPress plugins), so the tile and the card stay empty, in demo too.
  * Demo mode (PromoLine::demo(), test instances): the connector's list topped up from the whole fallback list,
  * installed plugins and build floors ignored, every entry in the rotation, × keeps one away for the session.
  * Store links open in a new tab with the house campaign parameters; admins read one line that their super user can
@@ -57,7 +59,7 @@ final class PremiumPromo
                 self::$current = PromoLine::shownToCurrentUser()
                     ? self::choose(self::valid(self::fromConnector(self::MAX)), static function () use ($demo): array {
                         return self::fromCatalog($demo);
-                    }, intdiv(time(), 86400), $demo)
+                    }, intdiv(time(), 86400), $demo, PromoLine::isWordPress())
                     : [];
             } catch (\Throwable $e) {
                 self::$current = [];
@@ -90,8 +92,11 @@ final class PremiumPromo
      * @param callable(): array<int, mixed>     $fallback      the fallback list (asked when the connector has none, or in demo)
      * @return array<int, array<string, string>>
      */
-    public static function choose(array $fromConnector, callable $fallback, int $day, bool $demo = false): array
+    public static function choose(array $fromConnector, callable $fallback, int $day, bool $demo = false, bool $wordpress = false): array
     {
+        if ($wordpress) {
+            return [];
+        }
         if ($demo) {
             $slugs = array_column($fromConnector, 'slug');
             foreach (self::valid($fallback()) as $entry) {

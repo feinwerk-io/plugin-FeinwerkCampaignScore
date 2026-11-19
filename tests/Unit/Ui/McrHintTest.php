@@ -57,4 +57,24 @@ class McrHintTest extends TestCase
     {
         $this->assertNull(McrHint::link(McrHint::ACTIVATE, false, true));
     }
+
+    /**
+     * Regression (PluginLead's Matomo for WordPress test, 2026-11-17): Matomo's Marketplace answers 403 and the plugin
+     * list 500 inside WordPress, so the hint links to the Marketplace in WordPress and drops the activate link.
+     */
+    public function test_insideWordPressSuperUsersGoToWordPressMarketplaceAndNotToMatomoPagesThatAreOff(): void
+    {
+        $wp = 'https://example.org/wp-admin/admin.php?page=matomo-marketplace&tab=install';
+        $install = McrHint::link(McrHint::INSTALL, true, true, true, $wp);
+        $this->assertSame($wp, $install['url']);
+        $this->assertSame('FeinwerkCampaignScore_McrHintMarketplace', $install['label']);
+        $this->assertFalse($install['external']);
+
+        $this->assertNull(McrHint::link(McrHint::ACTIVATE, true, true, true, $wp), 'no link to the plugin list');
+        $this->assertSame(McrHint::PLUGIN_PAGE, McrHint::link(McrHint::INSTALL, true, true, true, '')['url'], 'WordPress URL unknown');
+        $this->assertSame(McrHint::PLUGIN_PAGE, McrHint::link(McrHint::INSTALL, false, true, true, $wp)['url'], 'admins');
+        foreach ([McrHint::link(McrHint::INSTALL, true, true, true, $wp), McrHint::link(McrHint::INSTALL, true, true, true, '')] as $link) {
+            $this->assertStringNotContainsString('module=Marketplace', $link['url']);
+        }
+    }
 }
