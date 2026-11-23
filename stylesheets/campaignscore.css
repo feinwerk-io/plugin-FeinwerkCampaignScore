@@ -1,0 +1,253 @@
+/*
+ * The Campaign Score card (templates/_scoreCard.twig) and the findings table. Plain CSS with Matomo's CSS custom
+ * properties and light fallbacks, no Matomo LESS variables (the 5.x line allows Matomo 5.0). The status colours have a
+ * dark variant: [data-theme-mode="dark"], and "auto" with a dark system setting.
+ */
+.fwcs-card,
+.fwcs-allsites {
+    --fwcs-good: #2e7d32;
+    --fwcs-ok: #b26a00;
+    --fwcs-poor: #c62828;
+    padding: 12px 16px;
+    color: var(--theme-color-text, #212121);
+}
+
+[data-theme-mode="dark"] .fwcs-card,
+[data-theme-mode="dark"] .fwcs-allsites {
+    --fwcs-good: #81c784;
+    --fwcs-ok: #ffb74d;
+    --fwcs-poor: #ef9a9a;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme-mode="auto"] .fwcs-card,
+    [data-theme-mode="auto"] .fwcs-allsites {
+        --fwcs-good: #81c784;
+        --fwcs-ok: #ffb74d;
+        --fwcs-poor: #ef9a9a;
+    }
+}
+
+.fwcs-card__head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.fwcs-card__score {
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.fwcs-card__score--good {
+    color: var(--fwcs-good);
+}
+
+.fwcs-card__score--ok {
+    color: var(--fwcs-ok);
+}
+
+.fwcs-card__score--poor {
+    color: var(--fwcs-poor);
+}
+
+.fwcs-card__text {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.fwcs-card__basis {
+    font-size: 14px;
+    color: var(--theme-color-text, #212121);
+}
+
+.fwcs-card__meta {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--theme-color-text-lighter, #646464);
+}
+
+.fwcs-card__problems-title {
+    margin-top: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--theme-color-text-light, #444);
+}
+
+.fwcs-card__problems {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fwcs-card__problems li {
+    display: flex;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--theme-color-border, #e0e0e0);
+}
+
+.fwcs-card__problem {
+    color: var(--theme-color-text-light, #444);
+    white-space: nowrap;
+}
+
+.fwcs-card__value {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--theme-color-text, #212121);
+}
+
+.fwcs-card__visits {
+    white-space: nowrap;
+    color: var(--theme-color-text-lighter, #646464);
+}
+
+.fwcs-card__link {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--theme-color-link, #1976d2);
+}
+
+.fwcs-card .fwcs-feedback {
+    margin-top: 10px;
+}
+
+.fwcs-sparkline {
+    flex: none;
+    color: var(--theme-color-text-lighter, #646464);
+    overflow: visible;
+}
+
+.fwcs-card__delta {
+    margin-top: 2px;
+    font-size: 12px;
+}
+
+.fwcs-card__delta--up {
+    color: var(--fwcs-good);
+}
+
+.fwcs-card__delta--down {
+    color: var(--fwcs-poor);
+}
+
+.fwcs-card__delta--same {
+    color: var(--theme-color-text-lighter, #646464);
+}
+
+.fwcs-card__downloads {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+}
+
+.fwcs-card__downloads a {
+    color: var(--theme-color-link, #1976d2);
+}
+
+/* findings table: "new" mark before the value, where the values occur below it */
+.fwcs-new {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 16px;
+    color: var(--theme-color-brand-contrast, #fff);
+    background: var(--theme-color-brand, #43a047);
+}
+
+.fwcs-context {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    white-space: normal;
+    color: var(--theme-color-text-lighter, #646464);
+}
+
+/* Matomo keeps a label on one clipped line; the findings show the context on a second line */
+.fwcs-findings table.dataTable td.label {
+    white-space: normal;
+}
+
+.fwcs-findings table.dataTable td.label span.label {
+    display: inline;
+    overflow: visible;
+    white-space: normal;
+}
+
+/* all websites */
+.fwcs-allsites {
+    padding: 8px 16px 12px;
+}
+
+.fwcs-allsites__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    color: var(--theme-color-text, #212121);
+}
+
+.fwcs-allsites__table th,
+.fwcs-allsites__table td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--theme-color-border, #e0e0e0);
+}
+
+.fwcs-allsites__table th {
+    font-weight: 600;
+    color: var(--theme-color-text-light, #444);
+}
+
+.fwcs-allsites__table .fwcs-allsites__num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.fwcs-allsites__table a {
+    color: var(--theme-color-link, #1976d2);
+}
+
+/* All websites with many websites: loaded on a click */
+.fwcs-allsites__load {
+    margin: 4px 0 8px;
+}
+
+.fwcs-allsites__status {
+    margin-left: 12px;
+}
+
+/* Info box above the report while Marketing Campaigns Reporting is not active: Matomo's info alert without the widget
+   card around it */
+.card:has(.fwcs-mcr-hint) {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.card:has(.fwcs-mcr-hint) > .card-content {
+    padding: 0;
+}
+
+.card:has(.fwcs-mcr-hint) > .card-content > .card-title {
+    display: none;
+}
+
+.fwcs-mcr-hint.alert {
+    margin: 0;
+}
+
+.fwcs-mcr-hint a {
+    margin-left: 6px;
+    font-weight: 600;
+    white-space: nowrap;
+}

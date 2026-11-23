@@ -1,0 +1,5 @@
+{# Info box above the Campaign Score report while Marketing Campaigns Reporting is not active (Widgets/GetMcrHint.php). #}
+<div class="fwcs-mcr-hint alert alert-info">
+    {{ text }}{% if askSuperUser %} {{ askSuperUser }}{% endif %}
+    {% if link %}<a href="{{ link.url }}"{% if link.external %} target="_blank" rel="noopener"{% endif %}>{{ link.label }}</a>{% endif %}
+</div>

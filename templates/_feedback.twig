@@ -1,0 +1,28 @@
+{# Feedback question under the Campaign Score report and in its dashboard widget (Feinwerk feedback kit), one compact line: question,
+   borderless thumbs, quiet support link with a help icon (Peter, 2026-11-11: one line, no privacy sentence; footer
+   variant A, Peter 2026-11-13, docs/footer.md). A long question ends with an ellipsis, the line never wraps. After a
+   vote the thanks replaces question and thumbs in the same line. feedback = FeedbackBar::variables() {topic, question, idSite, enabled, supportUrl, version};
+   the behaviour is in javascripts/feedback.js (the vote goes through the API method sendFeedback, the Matomo server
+   sends it, never the browser). #}
+<div class="fwcs-feedback" data-topic="{{ feedback.topic }}" data-id-site="{{ feedback.idSite }}"
+     data-version="{{ feedback.version }}"
+     data-thanks-up="{{ 'FeinwerkCampaignScore_FeedbackThanks'|translate }}"
+     data-thanks-down="{{ 'FeinwerkCampaignScore_FeedbackThanksDown'|translate }}">
+    {% if feedback.enabled %}
+        <span class="fwcs-feedback__question" title="{{ feedback.question }}">{{ feedback.question }}</span>
+        {% for vote in ['up', 'down'] %}
+            {% set label = (vote == 'up' ? 'FeinwerkCampaignScore_FeedbackYes' : 'FeinwerkCampaignScore_FeedbackNo')|translate %}
+            <button type="button" class="fwcs-feedback__thumb" data-vote="{{ vote }}" title="{{ label }}"
+                    aria-label="{{ label }}" aria-pressed="false">
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"
+                     class="fwcs-feedback__icon--{{ vote }}">
+                    <path d="M3 10h4v10H3zM7 10l4-7c1.3 0 2.2 1.1 2 2.4L12.4 9H19a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.8 20H7"/>
+                </svg>
+            </button>
+        {% endfor %}
+        <span class="fwcs-feedback__thanks" role="status"></span>
+    {% endif %}
+    <a class="fwcs-feedback__support" href="{{ feedback.supportUrl }}" target="_blank" rel="noopener noreferrer"
+       title="{{ 'FeinwerkCampaignScore_SupportTitle'|translate }}"><svg viewBox="0 0 24 24" width="14" height="14"
+       aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17h.01"/></svg>{{ 'FeinwerkCampaignScore_Support'|translate }}</a>
+</div>

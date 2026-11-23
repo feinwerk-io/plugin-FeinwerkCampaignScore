@@ -1,0 +1,435 @@
+/*
+ * Campaign Score's primary placements (Peter, 2026-11-13): the score card with the guide to Feinwerk Campaigns beside it
+ * and the paid Feinwerk plugins after it (templates/_scoreSplit.twig, javascripts/promocard.js), and the link with the
+ * mark under the findings (templates/_footerLink.twig). Feinwerk petrol #0e7c7b, mint #9fd8d2 in dark mode, a calm field
+ * of dots in the banner's top-right corner. Plain CSS without Matomo's LESS variables (Matomo 5.0 to 6.x); Matomo's CSS
+ * variables with fallbacks, a dark variant for [data-theme-mode="dark"] and for "auto" with a dark system setting.
+ */
+
+.fwcs-banner,
+.fwcs-footlink,
+.fwcs-split {
+    --fwcs-brand: #0e7c7b;
+    --fwcs-brand-ink: #fff;
+    --fwcs-brand-hover: #0a5453;
+    --fwcs-brand-soft: rgba(14, 124, 123, .10);
+    --fwcs-accent-soft: rgba(14, 124, 123, .08);
+    --fwcs-dot: rgba(14, 124, 123, .22);
+    --fwcs-line: var(--theme-color-border, #e5e7eb);
+}
+
+[data-theme-mode="dark"] .fwcs-banner,
+[data-theme-mode="dark"] .fwcs-footlink,
+[data-theme-mode="dark"] .fwcs-split {
+    --fwcs-brand: #9fd8d2;
+    --fwcs-brand-ink: #0a1514;
+    --fwcs-brand-hover: #c4ebe6;
+    --fwcs-brand-soft: rgba(159, 216, 210, .10);
+    --fwcs-accent-soft: rgba(159, 216, 210, .12);
+    --fwcs-dot: rgba(159, 216, 210, .24);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme-mode="auto"] .fwcs-banner,
+    [data-theme-mode="auto"] .fwcs-footlink,
+    [data-theme-mode="auto"] .fwcs-split {
+        --fwcs-brand: #9fd8d2;
+        --fwcs-brand-ink: #0a1514;
+        --fwcs-brand-hover: #c4ebe6;
+        --fwcs-brand-soft: rgba(159, 216, 210, .10);
+        --fwcs-accent-soft: rgba(159, 216, 210, .12);
+        --fwcs-dot: rgba(159, 216, 210, .24);
+    }
+}
+
+/* ---- the split: score card and banner 50/50 ---------------------------------------------------------------------- */
+
+/* Matomo's outer card of the score card widget: no frame, no background, no title (the score card has its own) */
+.card:has(.fwcs-split) {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.card:has(.fwcs-split) > .card-content {
+    padding: 0 !important;
+}
+
+.card:has(.fwcs-split) > .card-content > .card-title {
+    display: none !important;
+}
+
+.fwcs-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: stretch;
+}
+
+/* when the rotation has nothing left (promocard.js removes the group): the score card takes the whole width */
+.fwcs-split:not(:has(> .fwcs-split__side)) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.fwcs-split__side {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.fwcs-split__main.card {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+}
+
+.fwcs-split__main > .card-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* the score card bigger and centred in the height the banner gives it */
+.fwcs-split__main > .card-content > .fwcs-card {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 24px;
+}
+
+.fwcs-split .fwcs-card__head {
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.fwcs-split .fwcs-card__score {
+    font-size: 68px;
+    line-height: 1;
+}
+
+.fwcs-split .fwcs-sparkline {
+    width: 168px;
+    height: 40px;
+}
+
+.fwcs-split .fwcs-card__text {
+    max-width: 300px;
+}
+
+.fwcs-split .fwcs-card__basis {
+    font-size: 16px;
+}
+
+.fwcs-split .fwcs-card__delta {
+    font-size: 14px;
+}
+
+.fwcs-split .fwcs-card__downloads--inline {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin-top: 12px;
+    text-align: left;
+}
+
+/* the convention export is a step of the guide: hidden here only while the guide shows, so it stays reachable when the
+   guide is hidden, not offered, or a browser lacks :has() or the script */
+.fwcs-split:has(.fwcs-banner--guide[data-fwpromo-ready]) .fwcs-card__export-alt {
+    display: none;
+}
+
+@media (max-width: 1000px) {
+    .fwcs-split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---- the banner: guide and paid plugins -------------------------------------------------------------------------- */
+
+/* hidden until promocard.js has checked the 30 days and it is this banner's turn */
+.fwcs-banner:not([data-fwpromo-ready]) {
+    display: none;
+}
+
+/* a soft petrol wash from the left and, in the top-right corner, a calm field of dots like the dots of the mark */
+.fwcs-banner[data-fwpromo-ready] {
+    position: relative;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin: 0;
+    padding: 20px;
+    border: 1px solid var(--fwcs-line);
+    border-radius: 10px;
+    overflow: hidden;
+    color: var(--theme-color-text, #212121);
+    background-color: var(--theme-color-background-contrast, #fff);
+    background-image: linear-gradient(110deg, var(--fwcs-brand-soft) 0%, transparent 62%);
+}
+
+.fwcs-banner[data-fwpromo-ready]::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 220px;
+    pointer-events: none;
+    background-image: radial-gradient(circle, var(--fwcs-dot) 1.3px, transparent 1.9px);
+    background-size: 13px 13px;
+    -webkit-mask-image: radial-gradient(farthest-side at 100% 0%, #000 0%, rgba(0, 0, 0, .6) 45%, transparent 100%);
+    mask-image: radial-gradient(farthest-side at 100% 0%, #000 0%, rgba(0, 0, 0, .6) 45%, transparent 100%);
+}
+
+.fwcs-banner > * {
+    position: relative;
+}
+
+.fwcs-banner__head {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding-right: 26px;
+}
+
+.fwcs-banner__art {
+    flex: 0 0 176px;
+    aspect-ratio: 8 / 5;
+    border: 1px solid var(--fwcs-line);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .10);
+}
+
+.fwcs-banner__art svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.fwcs-banner__intro {
+    min-width: 0;
+}
+
+.fwcs-banner .fwcs-banner__label {
+    display: inline-block;
+    margin-bottom: 6px;
+    color: var(--fwcs-brand);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.fwcs-banner .fwcs-banner__title {
+    margin: 0 0 6px;
+    color: var(--theme-color-text, #212121);
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.fwcs-banner .fwcs-banner__text {
+    margin: 0;
+    color: var(--theme-color-text-light, #374151);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.fwcs-banner__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    margin-top: 2px;
+}
+
+/* the Feinwerk logo at the end of the actions row (templates/_feinwerkLogo.twig) */
+.fwcs-banner__actions .fwlogo {
+    margin-left: auto;
+}
+
+/* Matomo's .btn sets its own text colour: the button text follows the banner (dark text on mint in dark mode) */
+.fwcs-banner a.btn.fwcs-banner__cta,
+.fwcs-banner a.btn.fwcs-banner__cta:visited {
+    color: var(--fwcs-brand-ink) !important;
+    background-color: var(--fwcs-brand);
+}
+
+.fwcs-banner a.btn.fwcs-banner__cta:hover,
+.fwcs-banner a.btn.fwcs-banner__cta:focus {
+    color: var(--fwcs-brand-ink) !important;
+    background-color: var(--fwcs-brand-hover);
+}
+
+.fwcs-banner .fwcs-banner__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    color: var(--theme-color-text-lighter, #6b7280);
+    background: transparent;
+    font-size: 22px;
+    line-height: 30px;
+    cursor: pointer;
+}
+
+.fwcs-banner .fwcs-banner__close:hover,
+.fwcs-banner .fwcs-banner__close:focus-visible {
+    color: var(--theme-color-text, #212121);
+    background: var(--fwcs-brand-soft);
+}
+
+/* the guide: why, then export, upload, build links */
+.fwcs-guide__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--theme-color-text, #212121);
+}
+
+.fwcs-guide__steps {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fwcs-step {
+    margin: 0;
+}
+
+.fwcs-step__link,
+.fwcs-step__link:visited {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border: 1px solid var(--fwcs-line);
+    border-radius: 8px;
+    color: var(--theme-color-text, #212121);
+    background: var(--theme-color-background-contrast, #fff);
+    text-decoration: none;
+}
+
+.fwcs-step__link:hover,
+.fwcs-step__link:focus-visible {
+    border-color: var(--fwcs-brand);
+    text-decoration: none;
+}
+
+.fwcs-step--next .fwcs-step__link {
+    border-color: var(--fwcs-brand);
+    background: var(--fwcs-accent-soft);
+}
+
+.fwcs-step__num {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 1.5px solid var(--fwcs-brand);
+    border-radius: 50%;
+    color: var(--fwcs-brand);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.fwcs-step__body {
+    display: grid;
+    gap: 2px;
+}
+
+.fwcs-step__body strong {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.fwcs-step__body small {
+    font-size: 12px;
+    color: var(--theme-color-text-light, #444);
+}
+
+/* a paid plugin, after the guide */
+.fwcs-premium__art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0e2a28;
+}
+
+.fwcs-premium__art img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fwcs-premium__monogram {
+    font-size: 40px;
+    font-weight: 700;
+    color: #8ee6c8;
+}
+
+/* for admins under a store link: who can install the plugin */
+.fwcs-banner .fwcs-premium__note {
+    margin: -6px 0 0;
+    color: var(--theme-color-text-lighter, #646464);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.fwcs-premium__price {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--theme-color-text, #212121);
+}
+
+.fwcs-banner .fwcs-premium__text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+}
+
+@media (max-width: 1250px) {
+    .fwcs-banner__art {
+        flex-basis: 140px;
+    }
+}
+
+/* ---- the link with the mark under the findings ------------------------------------------------------------------ */
+
+.fwcs-mark {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    vertical-align: -3px;
+}
+
+.fwcs-footlink,
+.fwcs-footlink:visited {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--fwcs-brand);
+    text-decoration: none;
+}
+
+.fwcs-footlink:hover span,
+.fwcs-footlink:focus-visible span {
+    text-decoration: underline;
+}

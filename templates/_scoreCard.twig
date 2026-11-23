@@ -1,0 +1,65 @@
+{# The Campaign Score card (Ui/ScoreWidget.php, variables from Ui/ScoreCard.php): the score with a sparkline of the last
+   periods and the change to the previous period; on the report page the download links (beside the guide to Feinwerk
+   Campaigns only the correction list, templates/_scoreSplit.twig), in the dashboard widget the
+   largest problems, a link to the report and the feedback line. Campaign values are
+   stored HTML-encoded by Matomo: rawSafeDecoded decodes and escapes them once. #}
+<div class="fwcs-card{% if asDashboardWidget %} fwcs-card--widget{% endif %}">
+    {% if card.hasData %}
+        <div class="fwcs-card__head">
+            <span class="fwcs-card__score fwcs-card__score--{{ card.level }}">{{ card.score }}</span>
+            {% if sparkline %}
+                <svg class="fwcs-sparkline" viewBox="0 0 {{ sparklineWidth }} {{ sparklineHeight }}" width="{{ sparklineWidth }}"
+                     height="{{ sparklineHeight }}" role="img" aria-label="{{ 'FeinwerkCampaignScore_SparklineTitle'|translate }}">
+                    <title>{{ 'FeinwerkCampaignScore_SparklineTitle'|translate }}</title>
+                    <polyline points="{{ sparkline }}" fill="none" stroke="currentColor" stroke-width="2"
+                              stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+                </svg>
+            {% endif %}
+            <div class="fwcs-card__text">
+                <div class="fwcs-card__basis">{{ card.basis }}</div>
+                {% if card.delta %}<div class="fwcs-card__delta fwcs-card__delta--{{ card.deltaDirection }}">{{ card.delta }}</div>{% endif %}
+                <div class="fwcs-card__meta">{{ card.fields }}{% if card.unchecked %} {{ card.unchecked }}{% endif %}</div>
+                {% if split|default and downloads is not empty %}
+                    {# beside the guide: the correction list under this text; the convention export is a step of the
+                       guide and shows here only while the guide is not there (stylesheets/guide.css) #}
+                    <div class="fwcs-card__downloads fwcs-card__downloads--inline">
+                        <a href="{{ downloads[0].url }}" rel="noopener" download>{{ downloads[0].label }}</a>
+                        {% if downloads[1] is defined %}<a class="fwcs-card__export-alt" href="{{ downloads[1].url }}" rel="noopener" download>{{ downloads[1].label }}</a>{% endif %}
+                    </div>
+                {% endif %}
+                {% if card.hint and asDashboardWidget %}<div class="fwcs-card__meta">{{ card.hint }}</div>{% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="fwcs-card__meta">{{ card.noData }}</div>
+        {% if card.hint and asDashboardWidget %}<div class="fwcs-card__meta">{{ card.hint }}</div>{% endif %}
+    {% endif %}
+
+    {% if asDashboardWidget and card.hasData %}
+        <div class="fwcs-card__problems-title">{{ 'FeinwerkCampaignScore_TopProblems'|translate }}</div>
+        {% if card.problems is empty %}
+            <div class="fwcs-card__meta">{{ 'FeinwerkCampaignScore_NoProblems'|translate }}</div>
+        {% else %}
+            <ul class="fwcs-card__problems">
+                {% for problem in card.problems %}
+                    <li>
+                        <span class="fwcs-card__problem">{{ problem.problem }} ({{ problem.field }}):</span>
+                        <span class="fwcs-card__value">{{ problem.value|rawSafeDecoded }}</span>
+                        <span class="fwcs-card__visits">{{ problem.visits }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <a class="fwcs-card__link" href="{{ reportUrl }}">{{ 'FeinwerkCampaignScore_ShowAllFindings'|translate }}</a>
+    {% endif %}
+
+    {% if promoCard|default %}{% include '@FeinwerkCampaignScore/_promoCard.twig' %}{% endif %}
+
+    {% if downloads is not empty and not split|default %}
+        <div class="fwcs-card__downloads">
+            {% for download in downloads %}<a href="{{ download.url }}" rel="noopener" download>{{ download.label }}</a>{% endfor %}
+        </div>
+    {% endif %}
+
+    {{ feedback|raw }}
+</div>
