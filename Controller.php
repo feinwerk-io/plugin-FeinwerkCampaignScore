@@ -100,9 +100,11 @@ class Controller extends \Piwik\Plugin\Controller
     {
         Piwik::checkUserHasSuperUserAccess();
         $env = ConnectorInstaller::environment();
-        if (ConnectorInstaller::decide($env) === ConnectorInstaller::HIDDEN) {
-            // nothing to offer: the connector's own pages when it is active, else Matomo's admin home (switched off)
-            Url::redirectToUrl($env['active'] ? ConnectorInstaller::CONNECTOR_URL : 'index.php?module=CoreAdminHome&action=home');
+        $redirect = ConnectorInstaller::redirectFor($env);
+        if ($redirect !== null) {
+            Url::redirectToUrl($redirect);
+
+            return '';
         }
 
         return $this->renderConnectorInstaller($env, null);
@@ -117,13 +119,14 @@ class Controller extends \Piwik\Plugin\Controller
     {
         Piwik::checkUserHasSuperUserAccess();
         $env = ConnectorInstaller::environment();
-        if ($env['active']) {
-            Url::redirectToUrl(ConnectorInstaller::CONNECTOR_URL);
+        $redirect = ConnectorInstaller::redirectFor($env);
+        if ($redirect !== null) {
+            // active: the connector; switched off: admin home (never the page's "open the connector" fallback)
+            Url::redirectToUrl($redirect);
+
+            return '';
         }
         $state = ConnectorInstaller::decide($env);
-        if ($state === ConnectorInstaller::HIDDEN) {
-            Url::redirectToUrl('index.php?module=CoreAdminHome&action=home');
-        }
         if ($state !== ConnectorInstaller::INSTALL && $state !== ConnectorInstaller::ACTIVATE) {
             return $this->renderConnectorInstaller($env, null);
         }
@@ -135,6 +138,7 @@ class Controller extends \Piwik\Plugin\Controller
             'nonce' => $nonce,
         ]);
         if (!$verified) {
+            // Matomo is sending the user to its password page (it returns only when its redirect is off)
             return '';
         }
 
@@ -168,8 +172,8 @@ class Controller extends \Piwik\Plugin\Controller
     private function renderConnectorInstaller(array $env, ?array $result): string
     {
         $view = new View('@FeinwerkCampaignScore/connectorInstaller');
-        // an admin page: no website needed (the menu entry is reached from pages without idSite too), and Matomo's
-        // admin rule for frames (enable_framed_settings, X-Frame-Options sameorigin by default)
+        // an admin page without a website: setGeneralVariablesView() needs idSite (the menu entry is reached from
+        // admin pages without one); the admin variables also send X-Frame-Options as enable_framed_settings says
         $this->setBasicVariablesView($view);
         \Piwik\Plugin\ControllerAdmin::setBasicVariablesAdminView($view);
         $state = ConnectorInstaller::decide($env);
@@ -182,6 +186,8 @@ class Controller extends \Piwik\Plugin\Controller
         $view->installerWordPressUrl = ConnectorInstaller::wordpressUrl();
         $view->installerConnectorUrl = ConnectorInstaller::CONNECTOR_URL;
         $view->installerPhpFloor = ConnectorInstaller::PHP_FLOOR;
+        $view->installerPluginsAdmin = $env['pluginsAdmin'];
+        $view->installerConsoleCommand = ConnectorInstaller::CONSOLE_COMMAND;
 
         return $view->render();
     }

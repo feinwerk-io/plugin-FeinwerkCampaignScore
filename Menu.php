@@ -27,13 +27,13 @@ class Menu extends \Piwik\Plugin\Menu
     private function addConnectorInstaller(MenuAdmin $menu): void
     {
         try {
-            $state = ConnectorInstaller::decide(ConnectorInstaller::environment());
-            if ($state === ConnectorInstaller::HIDDEN || !ConnectorInstaller::claim()) {
+            $env = ConnectorInstaller::environment();
+            if (ConnectorInstaller::decide($env) === ConnectorInstaller::HIDDEN || !ConnectorInstaller::claim()) {
                 return;
             }
             $menu->addItem(
                 'FeinwerkCampaignScore_ConnectorInstallerSection',
-                $state === ConnectorInstaller::ACTIVATE
+                $env['present']
                     ? 'FeinwerkCampaignScore_ConnectorInstallerMenuActivate'
                     : 'FeinwerkCampaignScore_ConnectorInstallerMenu',
                 $this->urlForAction('connectorInstaller'),

@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.5.1
+
+- "Install Feinwerk Connector" under Administration › Feinwerk Plugins: where plugin administration is switched off in Matomo and the connector's files are already there, the page now shows the command that activates it.
+
 ## 5.5.0
 
 - New: super users who do not have the free Feinwerk Marketplace Connector active find "Install Feinwerk Connector" under Administration › Feinwerk Plugins. One click installs and activates it from Matomo's Marketplace, after Matomo's usual password check. Where Matomo cannot install plugins itself, the page explains the manual way; inside Matomo for WordPress it leads to the Marketplace in WordPress. `connector_installer = 0` in the section `[FeinwerkMarketplaceConnector]` of config.ini.php removes the entry for all Feinwerk plugins; in `[FeinwerkCampaignScore]` it removes only Campaign Score's own.

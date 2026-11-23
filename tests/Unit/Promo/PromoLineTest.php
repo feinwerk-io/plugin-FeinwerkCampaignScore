@@ -357,6 +357,20 @@ class PromoLineTest extends TestCase
     }
 
     /** Every text of every message exists in both languages, without en or em dashes (house rule). */
+    /**
+     * Regression (release review 2026-11-20): without automatic updates (enable_auto_update = 0 or
+     * multi_server_environment) Matomo's Marketplace offers a ZIP download instead of Install, the case Peter ruled out
+     * ("Dann keine Nachricht"). The connector link into the Marketplace needs all four of Matomo's conditions.
+     */
+    public function test_the_marketplace_counts_as_usable_only_where_matomo_offers_its_install_button(): void
+    {
+        $all = ['marketplace' => true, 'internet' => true, 'pluginsAdmin' => true, 'autoUpdate' => true];
+        self::assertTrue(PromoLine::marketplaceUsableBy($all));
+        foreach (array_keys($all) as $switch) {
+            self::assertFalse(PromoLine::marketplaceUsableBy([$switch => false] + $all), $switch);
+        }
+    }
+
     public function test_texts_in_german_and_english(): void
     {
         $keys = ['FeinwerkCampaignScore_PromoTip', 'FeinwerkCampaignScore_PromoDismiss'];
