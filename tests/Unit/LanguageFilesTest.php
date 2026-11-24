@@ -22,12 +22,6 @@ class LanguageFilesTest extends TestCase
 {
     private const LANGUAGES = ['en', 'de', 'fr', 'es', 'it'];
 
-    /**
-     * Placeholders a language may use although English does not: PromoLine passes Matomo's own word for the super user
-     * (Installation_SuperUser), which the German sentence takes.
-     */
-    private const OPTIONAL_PLACEHOLDERS = ['PremiumAskSuperUser' => ['%s']];
-
     /** @return array<string, string> */
     private static function texts(string $language): array
     {
@@ -58,16 +52,16 @@ class LanguageFilesTest extends TestCase
         }
     }
 
+    /**
+     * Exactly the placeholders of en.json, no exception: a translation with an extra %s shows it literally wherever a
+     * caller passes no value (kit addendum 2026-11-24, PremiumAskSuperUser in German).
+     */
     public function test_everyText_keepsThePlaceholdersOfEnglish(): void
     {
         $english = self::texts('en');
         foreach (self::LANGUAGES as $language) {
             foreach (self::texts($language) as $key => $text) {
                 $found = self::placeholders($text);
-                if ($found !== self::placeholders($english[$key]) && isset(self::OPTIONAL_PLACEHOLDERS[$key])) {
-                    $this->assertSame(self::OPTIONAL_PLACEHOLDERS[$key], $found, "$language: $key");
-                    continue;
-                }
                 $this->assertSame(self::placeholders($english[$key]), $found, "$language: $key");
                 $this->assertNotSame('', trim($text), "$language: $key is empty");
             }

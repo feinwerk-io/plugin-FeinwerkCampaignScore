@@ -18,6 +18,7 @@ use Piwik\Plugin\ViewDataTable;
 use Piwik\Plugins\CoreVisualizations\Visualizations\HtmlTable;
 use Piwik\Plugins\FeinwerkCampaignScore\Categories\CampaignScoreSubcategory;
 use Piwik\Plugins\FeinwerkCampaignScore\Columns\FindingValue;
+use Piwik\Plugins\FeinwerkCampaignScore\Data\PeriodGroups;
 use Piwik\Plugins\FeinwerkCampaignScore\Feedback\FeedbackBar;
 use Piwik\Plugins\FeinwerkCampaignScore\Promo\FooterLink;
 use Piwik\Plugins\FeinwerkCampaignScore\Ui\FindingTexts;
@@ -60,14 +61,17 @@ class GetFindings extends Report
 
     public function configureView(ViewDataTable $view)
     {
-        $view->config->columns_to_display = ['label', 'type', 'field', 'nb_visits', 'suggestion'];
+        // the fix right beside the value: Value | Suggestion | Visits; problem and field are a small line under the value
+        // (UI review 2026-11-24, design D1); exports and the API keep every column
+        $view->config->columns_to_display = ['label', 'suggestion', 'nb_visits'];
         $view->config->addTranslations([
             'label' => Piwik::translate('FeinwerkCampaignScore_ColumnValue'),
             'type' => Piwik::translate('FeinwerkCampaignScore_ColumnProblem'),
             'field' => Piwik::translate('FeinwerkCampaignScore_ColumnField'),
             'suggestion' => Piwik::translate('FeinwerkCampaignScore_ColumnSuggestion'),
         ]);
-        $view->config->no_data_message = Piwik::translate('FeinwerkCampaignScore_NoProblems');
+        // an empty table means "clean" only when there were campaign visits to check (UI review 2026-11-23)
+        $view->config->no_data_message = Piwik::translate(self::emptyMessageKey(self::checkBasis()));
         $view->config->datatable_css_class = 'fwcs-findings';
         $view->config->show_all_views_icons = false;
         $view->config->show_table_all_columns = false;
@@ -104,12 +108,16 @@ class GetFindings extends Report
                         . htmlspecialchars(Piwik::translate('FeinwerkCampaignScore_NewBadgeTitle'), ENT_QUOTES)
                         . '">' . htmlspecialchars(Piwik::translate('FeinwerkCampaignScore_NewBadge'), ENT_QUOTES) . '</span>');
                 }
+                $suffix = '<span class="fwcs-context fwcs-context--kind">'
+                    . htmlspecialchars((string) $row->getColumn('type') . ' · ' . (string) $row->getColumn('field'), ENT_QUOTES)
+                    . '</span>';
                 $contexts = $row->getMetadata('contexts');
                 if (is_array($contexts) && $contexts !== []) {
-                    $row->setMetadata('html_label_suffix', '<span class="fwcs-context">'
-                        . htmlspecialchars(Piwik::translate('FeinwerkCampaignScore_ContextLabel') . ': ' . FindingTexts::contexts($contexts, $translate), ENT_QUOTES)
-                        . '</span>');
+                    $suffix .= '<span class="fwcs-context">'
+                        . htmlspecialchars(Piwik::translate('FeinwerkCampaignScore_ContextLabel', [FindingTexts::contexts($contexts, $translate)]), ENT_QUOTES)
+                        . '</span>';
                 }
+                $row->setMetadata('html_label_suffix', $suffix);
             }
         };
 
@@ -118,6 +126,54 @@ class GetFindings extends Report
             // the link with the mark of Feinwerk Campaigns in place of the tip line (Peter, 2026-11-13)
             $view->config->show_footer_message = FeedbackBar::forReport(FeedbackBar::TOPIC_REPORT, $view, $idSite)
                 . FooterLink::forReport($view);
+        }
+    }
+
+    /**
+     * The empty table's message for the basis of the score (checkBasis()): "no campaign visits", "none could be checked"
+     * or, when there were checked visits or the basis is unknown, "no problems found". Pure.
+     *
+     * @param array{campaign: int, checked: int}|null $basis
+     */
+    public static function emptyMessageKey(?array $basis): string
+    {
+        if ($basis === null || $basis['checked'] > 0) {
+            return 'FeinwerkCampaignScore_NoProblems';
+        }
+
+        return $basis['campaign'] > 0 ? 'FeinwerkCampaignScore_ScoreNoneChecked' : 'FeinwerkCampaignScore_ScoreNoData';
+    }
+
+    /**
+     * Campaign and checked visits of the requested website and period, null when unknown (several periods, an error).
+     * Reads the score through the API with the same raw segment as the report's own request, so the analysis of this
+     * request is shared (API keeps it per website, period, date and segment) instead of run twice.
+     *
+     * @return array{campaign: int, checked: int}|null
+     */
+    private static function checkBasis(): ?array
+    {
+        try {
+            $period = Common::getRequestVar('period', '', 'string');
+            $date = Common::getRequestVar('date', '', 'string');
+            if (PeriodGroups::isSeveral($period, $date)) {
+                return null;
+            }
+            $score = \Piwik\API\Request::processRequest('FeinwerkCampaignScore.getScore', [
+                'idSite' => Common::getRequestVar('idSite', 0, 'int'),
+                'period' => $period,
+                'date' => $date,
+                'segment' => (string) (\Piwik\API\Request::getRawSegmentFromRequest() ?: ''),
+                'format' => 'original',
+            ], []);
+            if (!$score instanceof DataTable || $score->getRowsCount() !== 1) {
+                return null;
+            }
+            $row = $score->getFirstRow();
+
+            return ['campaign' => (int) $row->getColumn('campaign_visits'), 'checked' => (int) $row->getColumn('checked_visits')];
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 }

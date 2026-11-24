@@ -32,7 +32,7 @@
     align-items: center;
     gap: 10px;
     margin: 14px 0 0;
-    padding: 9px 30px 9px 10px;
+    padding: 9px 32px 9px 10px;
     border: 0;
     border-radius: 8px;
     background: var(--fwpromo-card-tint);
@@ -90,6 +90,9 @@
     position: absolute;
     top: 3px;
     right: 4px;
+    /* a 24 px target (UI standards) */
+    min-width: 24px;
+    min-height: 24px;
     padding: 0 5px;
     border: 0;
     background: transparent;
@@ -102,4 +105,34 @@
 .fwpromo-card .fwpromo-card__close:hover,
 .fwpromo-card .fwpromo-card__close:focus {
     color: var(--theme-color-text, #212121);
+    /* not Matomo's turquoise button:focus */
+    background: transparent;
+}
+
+.fwpromo-card .fwpromo-card__close:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring, #0969da);
+    outline-offset: 1px;
+}
+
+/* narrow (javascripts/promocard.js, below 300 px, e.g. a dashboard column at 768 px): no logo, the link under the
+   text, the sentence on up to three lines; selectors above the older kit copies' rules */
+.fwpromo-card.fwpromo-card--narrow[data-fwpromo-ready] {
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+
+.fwpromo-card.fwpromo-card--narrow[data-fwpromo-ready] .fwpromo-card__mark {
+    display: none;
+}
+
+.fwpromo-card.fwpromo-card--narrow[data-fwpromo-ready] .fwpromo-card__body {
+    flex: 1 1 100%;
+}
+
+.fwpromo-card.fwpromo-card--narrow[data-fwpromo-ready] .fwpromo-card__body span {
+    -webkit-line-clamp: 3;
+}
+
+.fwpromo-card.fwpromo-card--narrow[data-fwpromo-ready] a.fwpromo-card__link {
+    margin-left: 0;
 }

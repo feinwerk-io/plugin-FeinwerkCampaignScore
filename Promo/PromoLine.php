@@ -15,6 +15,7 @@ use Piwik\Container\StaticContainer;
 use Piwik\Piwik;
 use Piwik\Plugin\Manager as PluginManager;
 use Piwik\Plugin\ViewDataTable;
+use Piwik\Plugins\FeinwerkCampaignScore\ConnectorInstaller\ConnectorInstaller;
 use Piwik\Site;
 use Piwik\Translation\Translator;
 use Piwik\View;
@@ -342,8 +343,12 @@ final class PromoLine
      *
      * @return array{0: string, 1: bool} url, external
      */
-    public static function connectorUrl(bool $isSuperUser, bool $marketplaceUsable): array
+    public static function connectorUrl(bool $isSuperUser, bool $marketplaceUsable, bool $installerOffered = false): array
     {
+        // where this plugin's installer page is offered, the tip leads there (Peter, 2026-11-23: "Auf den Installer")
+        if ($isSuperUser && $installerOffered) {
+            return [ConnectorInstaller::PAGE_URL, false];
+        }
         if ($isSuperUser && $marketplaceUsable) {
             return ['index.php?module=Marketplace&action=overview#?popover=browsePluginDetail%243AFeinwerkMarketplaceConnector', false];
         }
@@ -417,8 +422,12 @@ final class PromoLine
         $note = '';
         if ($url === null) {
             $superUser = (bool) ($user['superUser'] ?? false);
-            [$url, $external] = self::connectorUrl($superUser, (bool) ($user['marketplace'] ?? false));
-            // an admin cannot install plugins: who can (the German sentence takes Matomo's own word)
+            [$url, $external] = self::connectorUrl(
+                $superUser,
+                (bool) ($user['marketplace'] ?? false),
+                (bool) ($user['installer'] ?? false)
+            );
+            // an admin cannot install plugins: who can
             $note = $superUser ? '' : (string) $translate('FeinwerkCampaignScore_PremiumAskSuperUser');
         }
         $line = $placement === 'line';
@@ -470,6 +479,8 @@ final class PromoLine
                 'wordpress' => self::isWordPress(),
                 'superUser' => $superUser,
                 'marketplace' => $superUser && self::marketplaceUsable(),
+                'installer' => $superUser
+                    && ConnectorInstaller::decide(ConnectorInstaller::environment()) !== ConnectorInstaller::HIDDEN,
             ],
             [self::class, 'isInstalled'],
             [Piwik::class, 'translate'],
@@ -482,7 +493,7 @@ final class PromoLine
      * - Matomo for WordPress: no connector message (Peter, 2026-11-17, "Dort nicht werben");
      * - a super user whose Matomo cannot install from its Marketplace gets no connector message either (Peter,
      *   2026-11-17, "Dann keine Nachricht": a ZIP download would promise what the instance cannot do);
-     * - the admin note takes Matomo's own word for the super user in the German sentence.
+     * - an admin gets the note who can install it.
      *
      * @param array{day: int, ecommerce: bool, demo: bool, wordpress: bool, superUser: bool, marketplace: bool} $env
      * @param callable(string): bool $isInstalled
@@ -498,13 +509,11 @@ final class PromoLine
         if ($id === null) {
             return null;
         }
-        $user = $id === self::CONNECTOR_MESSAGE ? ['superUser' => $env['superUser'], 'marketplace' => $env['marketplace']] : null;
+        $user = $id === self::CONNECTOR_MESSAGE
+            ? ['superUser' => $env['superUser'], 'marketplace' => $env['marketplace'], 'installer' => $env['installer'] ?? false]
+            : null;
 
-        return self::variables($id, $language, static function (string $key) use ($translate): string {
-            return $key === 'FeinwerkCampaignScore_PremiumAskSuperUser'
-                ? (string) $translate($key, [(string) $translate('Installation_SuperUser')])
-                : (string) $translate($key);
-        }, 'line', $env['demo'], $user);
+        return self::variables($id, $language, $translate, 'line', $env['demo'], $user);
     }
 
     /** The line as HTML for the footer of a report view; '' where it is not shown and on any error (never breaks a report). */

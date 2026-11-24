@@ -53,6 +53,11 @@
     color: var(--theme-color-brand, #43a047);
 }
 
+/* not Matomo's turquoise button:focus after a click (2.5:1 with the grey icon) */
+.fwcs-feedback .fwcs-feedback__thumb:focus {
+    background: transparent;
+}
+
 .fwcs-feedback__thumb:focus-visible,
 .fwcs-feedback__support:focus-visible {
     outline: 2px solid var(--theme-color-focus-ring, #0969da);

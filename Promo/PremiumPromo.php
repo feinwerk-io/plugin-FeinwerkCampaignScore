@@ -78,7 +78,8 @@ final class PremiumPromo
         try {
             return Piwik::hasUserSuperUserAccess()
                 ? ''
-                : Piwik::translate('FeinwerkCampaignScore_PremiumAskSuperUser', [Piwik::translate('Installation_SuperUser')]);
+                // a whole sentence in every language, no placeholder (kit addendum 2026-11-24)
+                : Piwik::translate('FeinwerkCampaignScore_PremiumAskSuperUser');
         } catch (\Throwable $e) {
             return '';
         }

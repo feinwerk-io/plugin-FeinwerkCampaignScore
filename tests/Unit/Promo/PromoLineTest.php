@@ -175,6 +175,13 @@ class PromoLineTest extends TestCase
             [$admin['url'], $admin['external'], $admin['note']]);
         self::assertSame('[FeinwerkCampaignScore_PromoConnectorLink]', $admin['link']);
 
+        // where this plugin's installer page is offered, the super user goes there (Peter, 2026-11-23: "Auf den Installer")
+        $installer = PromoLine::variables('connector', 'de', $translate, 'line', false, ['superUser' => true, 'marketplace' => true, 'installer' => true]);
+        self::assertSame(['index.php?module=FeinwerkCampaignScore&action=connectorInstaller', false, ''],
+            [$installer['url'], $installer['external'], $installer['note']]);
+        $adminInstaller = PromoLine::variables('connector', 'en', $translate, 'line', false, ['superUser' => false, 'marketplace' => true, 'installer' => true]);
+        self::assertTrue($adminInstaller['external'], 'admins cannot use the installer');
+
         $line = (string) file_get_contents(__DIR__ . '/../../../templates/_promo.twig');
         self::assertStringContainsString('{% if promo.external ?? true %} target="_blank" rel="noopener"{% endif %}', $line);
         self::assertStringContainsString('{% if promo.note ?? \'\' %} title="{{ promo.note }}"{% endif %}', $line);

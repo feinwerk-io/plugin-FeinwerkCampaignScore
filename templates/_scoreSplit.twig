@@ -15,7 +15,7 @@
             {% include '@FeinwerkCampaignScore/_scoreCard.twig' with {split: true} %}
         </div>
     </div>
-    <div class="fwcs-split__side" data-fwpromo-rotation="banner"><template>
+    <div class="fwcs-split__side" data-fwpromo-rotation="banner"{% if guide.pauseDays %} data-fwcs-pause-days="{{ guide.pauseDays }}"{% endif %}><template>
         {% if guide %}
             <aside class="fwcs-banner fwcs-banner--guide" data-fwpromo-id="{{ guide.id }}" data-fwpromo-days="{{ guide.days }}"{% if guide.demo %} data-fwpromo-demo="1"{% endif %}
                    aria-label="{{ guide.label }}">
@@ -27,6 +27,7 @@
                         <p class="fwcs-banner__text">{{ guide.text }}</p>
                     </div>
                 </div>
+                {% if guide.steps is not empty %}
                 <div class="fwcs-guide__title">{{ guide.guideTitle }}</div>
                 <ol class="fwcs-guide__steps">
                     {% for step in guide.steps %}
@@ -38,6 +39,7 @@
                         </li>
                     {% endfor %}
                 </ol>
+                {% endif %}
                 <div class="fwcs-banner__actions">
                     <a class="btn fwcs-banner__cta" href="{{ guide.url }}" target="_blank" rel="noopener">{{ guide.cta }} <span aria-hidden="true">&rarr;</span></a>
                     {% include '@FeinwerkCampaignScore/_feinwerkLogo.twig' %}

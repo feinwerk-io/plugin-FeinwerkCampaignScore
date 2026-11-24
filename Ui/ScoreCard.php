@@ -43,6 +43,9 @@ final class ScoreCard
         $withSourceMedium = !empty($score['with_source_medium']);
         $unchecked = (int) ($score['unchecked_visits'] ?? 0);
         $hasData = isset($score['score']);
+        // without a score: no campaign visits at all, or campaign visits none of which could be checked (release review
+        // 2026-11-24: the second case got the advice to add mtm_/utm_ parameters, which the links already carry)
+        $campaignVisits = (int) ($score['campaign_visits'] ?? 0);
         $value = $hasData ? (float) $score['score'] : 0.0;
 
         $problems = [];
@@ -53,6 +56,8 @@ final class ScoreCard
                 'field' => FindingTexts::field((string) ($finding['field'] ?? ''), $translate),
                 'value' => FindingTexts::value($type, (string) ($finding['label'] ?? ''), (array) ($finding['values'] ?? []), $translate, $formatNumber),
                 'visits' => $formatNumber((int) ($finding['nb_visits'] ?? 0)),
+                // the fix right in the widget (UI review 2026-11-24, design D2); '' where none can be given
+                'suggestion' => (string) ($finding['suggestion'] ?? ''),
             ];
         }
 
@@ -70,7 +75,10 @@ final class ScoreCard
             'hasData' => $hasData,
             'delta' => $delta,
             'deltaDirection' => $deltaDirection,
-            'noData' => $translate('FeinwerkCampaignScore_ScoreNoData'),
+            'noData' => $translate($campaignVisits > 0 ? 'FeinwerkCampaignScore_ScoreNoneChecked' : 'FeinwerkCampaignScore_ScoreNoData'),
+            'noDataHint' => $campaignVisits > 0
+                ? $translate('FeinwerkCampaignScore_ScoreUnchecked', $formatNumber($unchecked > 0 ? $unchecked : $campaignVisits))
+                : $translate('FeinwerkCampaignScore_ScoreNoDataHint'),
             'score' => $hasData ? $formatPercent((int) round($value)) : '',
             'level' => $value >= self::GOOD_FROM ? 'good' : ($value >= self::OK_FROM ? 'ok' : 'poor'),
             'basis' => $translate(

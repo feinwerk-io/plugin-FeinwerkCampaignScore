@@ -14,6 +14,7 @@ use Piwik\Cache;
 use Piwik\Container\StaticContainer;
 use Piwik\DataTable;
 use Piwik\DataTable\Row;
+use Piwik\Plugins\FeinwerkCampaignScore\Http\ApiErrors;
 use Piwik\Plugins\FeinwerkCampaignScore\Http\InvalidInputException;
 use Piwik\Piwik;
 use Piwik\Plugin\Manager as PluginManager;
@@ -49,16 +50,21 @@ class API extends \Piwik\Plugin\API
     private $analyses = [];
 
     /**
-     * The share of campaign visits with clean values and its basis: score (percent, missing without checkable
-     * visits), previous_score (the period before, for a single period), clean_visits, checked_visits,
-     * campaign_visits, unchecked_visits (rows grouped as "Others", masked values, visits Marketing Campaigns Reporting
-     * has no values for), with_source_medium (1 when source and medium are known), findings.
+     * Returns the Campaign Score of one website and period: the share of campaign visits with clean campaign values. Use
+     * it for "how clean is our campaign tracking", and with date=lastN for the trend.
      *
-     * @param int $idSite
-     * @param string $period
-     * @param string $date
-     * @param string|false $segment
-     * @return DataTable|DataTable\Map
+     * Columns: score (percent 0 to 100, one decimal; missing when the period has no checkable campaign visits),
+     * previous_score (the period before, for a single period), clean_visits, checked_visits, campaign_visits,
+     * unchecked_visits (visits in rows grouped as "Others", masked values, visits Marketing Campaigns Reporting has no
+     * values for), with_source_medium (1 when source and medium are checked, that is with Marketing Campaigns Reporting)
+     * and findings (the number of findings; for several periods not computed).
+     *
+     * @param int $idSite the website to check: one website ID (view access needed)
+     * @param string $period day, week, month, year or range
+     * @param string $date YYYY-MM-DD, today or yesterday; for period=range a range YYYY-MM-DD,YYYY-MM-DD or lastN/previousN;
+     *                     for several periods of the same kind lastN or previousN (then one result per period)
+     * @param string|false $segment a Matomo segment definition (URL-encoded) to check only those visits; default false: all visits
+     * @return DataTable|DataTable\Map one row for a single period; a Map keyed by period for several periods
      */
     public function getScore($idSite, $period, $date, $segment = false)
     {
@@ -73,17 +79,22 @@ class API extends \Piwik\Plugin\API
     }
 
     /**
-     * The findings, most visits first: label (the value, or the spelling variants separated by ", ", empty for a
-     * missing value) and nb_visits; as row metadata type (variants, alias, format, unusual_medium, separator,
-     * pattern, incomplete, similar), field (name, keyword, source, medium, content, group, placement), suggestion,
-     * values (value => visits), contexts (campaign name, source and medium where the values occur), new (1: not in
-     * the previous period) and segment (the visits concerned).
+     * Returns what keeps campaign values from being clean, most visits first, each with a suggestion. Use it to find out
+     * which campaign values to fix and how.
      *
-     * @param int $idSite
-     * @param string $period
-     * @param string $date
-     * @param string|false $segment
-     * @return DataTable|DataTable\Map
+     * Columns: label (the value, or the spelling variants with their visits separated by ", "; empty for a missing
+     * value) and nb_visits (visits with the value). Row metadata: type (variants, alias, format, unusual_medium,
+     * separator, pattern, incomplete, similar), field (name, keyword, source, medium, content, group, placement),
+     * suggestion (the clean value, empty where none can be given), values (value => visits), contexts (campaign name,
+     * source and medium where the values occur), new (1: not in the previous period), accept (the values an admin can
+     * accept with acceptValues) and segment (a segment for exactly these visits, for the Visits Log).
+     *
+     * @param int $idSite the website to check: one website ID (view access needed)
+     * @param string $period day, week, month, year or range
+     * @param string $date YYYY-MM-DD, today or yesterday; for period=range a range YYYY-MM-DD,YYYY-MM-DD or lastN/previousN;
+     *                     for several periods of the same kind lastN or previousN (then one result per period)
+     * @param string|false $segment a Matomo segment definition (URL-encoded) to check only those visits; default false: all visits
+     * @return DataTable|DataTable\Map one table for a single period; a Map keyed by period for several periods
      */
     public function getFindings($idSite, $period, $date, $segment = false)
     {
@@ -91,14 +102,18 @@ class API extends \Piwik\Plugin\API
     }
 
     /**
-     * The correction list: one row per value to fix (label) with nb_visits and, as metadata, field, type and
-     * suggestion.
+     * Returns the correction list: one row per campaign value to fix, with its suggestion. Use it to hand the fixes to
+     * whoever builds the campaign links (format=csv gives the list as a CSV file).
      *
-     * @param int $idSite
-     * @param string $period
-     * @param string $date
-     * @param string|false $segment
-     * @return DataTable|DataTable\Map
+     * Columns: label (the value to fix) and nb_visits; row metadata field (name, keyword, source, medium, content, group,
+     * placement), type (as in getFindings) and suggestion (the clean value, empty where none can be given).
+     *
+     * @param int $idSite the website to check: one website ID (view access needed)
+     * @param string $period day, week, month, year or range
+     * @param string $date YYYY-MM-DD, today or yesterday; for period=range a range YYYY-MM-DD,YYYY-MM-DD or lastN/previousN;
+     *                     for several periods of the same kind lastN or previousN (then one result per period)
+     * @param string|false $segment a Matomo segment definition (URL-encoded) to check only those visits; default false: all visits
+     * @return DataTable|DataTable\Map one table for a single period; a Map keyed by period for several periods
      */
     public function getCorrections($idSite, $period, $date, $segment = false)
     {
@@ -106,20 +121,27 @@ class API extends \Piwik\Plugin\API
     }
 
     /**
-     * The clean campaign values of the website as a starting naming convention for Feinwerk Campaigns (format
-     * feinwerk-campaign-convention, version 1). Counts only, nothing about visitors.
+     * Returns the website's clean campaign values of one period as a starting naming convention for Feinwerk Campaigns.
+     * Use it to set up a naming convention from the values the team already uses. Counts only, nothing about visitors.
      *
-     * @param int $idSite
-     * @param string $period
-     * @param string $date
-     * @param string|false $segment
-     * @return array<string, mixed>
+     * Bad input (several periods) answers with HTTP 400.
+     *
+     * @param int $idSite the website to check: one website ID (view access needed)
+     * @param string $period day, week, month, year or range
+     * @param string $date YYYY-MM-DD, today or yesterday; for period=range a range YYYY-MM-DD,YYYY-MM-DD. One period only:
+     *                     lastN or previousN for several periods is refused
+     * @param string|false $segment a Matomo segment definition (URL-encoded) to check only those visits; default false: all visits
+     * @return array<string, mixed> format feinwerk-campaign-convention, version 1: format, version, generated_at (ISO 8601
+     *                              UTC), source (product, plugin and Matomo version, site_id, site_name, site_urls, period
+     *                              from and to as YYYY-MM-DD), parameter_style (null), separator (- or _, null when mixed),
+     *                              case (lower, or null when unknown), allowed_mediums, and fields with the clean values
+     *                              per field and their visits
      */
     public function getConvention($idSite, $period, $date, $segment = false)
     {
         $periods = $this->analyze($idSite, $period, $date, $segment);
         if (count($periods) !== 1) {
-            throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorSinglePeriod'));
+            throw new InvalidInputException(ApiErrors::onePeriod($date, [Piwik::class, 'translate']));
         }
         $entry = reset($periods);
         $idSite = (int) $idSite;
@@ -145,14 +167,17 @@ class API extends \Piwik\Plugin\API
     }
 
     /**
-     * The score of every website the user can view, for one day, week, month or year: label (website name), score,
-     * campaign_visits, checked_visits, findings; metadata idsite. At most MAX_SITES websites (with more, those with the
-     * most visits), read in groups of AllSites::GROUP_SIZE; the result is kept for AllSites::CACHE_SECONDS.
+     * Returns the Campaign Score of every website the user can view, for one day, week, month or year. Use it to compare
+     * websites or to find the website whose campaign tracking needs work first.
      *
-     * @param string $period
-     * @param string $date
-     * @param string|false $segment
-     * @return DataTable
+     * At most 100 websites (with more, the 100 with the most visits), read ten at a time; the result is kept for 15
+     * minutes. A date range or several periods answer with HTTP 400.
+     *
+     * @param string $period day, week, month or year (no range)
+     * @param string $date YYYY-MM-DD, today or yesterday: one period only
+     * @param string|false $segment a Matomo segment definition (URL-encoded) to check only those visits; default false: all visits
+     * @return DataTable one row per website: label (website name), score (percent, missing without checkable campaign
+     *                   visits), campaign_visits, checked_visits, findings; row metadata idsite
      */
     public function getScoresForAllSites($period, $date, $segment = false)
     {
@@ -161,9 +186,9 @@ class API extends \Piwik\Plugin\API
         $date = (string) $date;
         $problem = AllSites::periodProblem($period, $date);
         if ($problem !== null) {
-            throw new InvalidInputException(Piwik::translate(
-                $problem === AllSites::RANGE ? 'FeinwerkCampaignScore_ErrorRangeAllSites' : 'FeinwerkCampaignScore_ErrorSinglePeriod'
-            ));
+            throw new InvalidInputException($problem === AllSites::RANGE
+                ? ApiErrors::periodNotHere($period, ApiErrors::SINGLE_PERIODS, [Piwik::class, 'translate'])
+                : ApiErrors::onePeriod($date, [Piwik::class, 'translate'], false));
         }
         $segment = $segment === false || $segment === null ? '' : (string) $segment;
 
@@ -279,12 +304,16 @@ class API extends \Piwik\Plugin\API
     }
 
     /**
-     * Marks values as accepted for the website: they count as clean from now on and no longer appear as findings
-     * (setting "Accepted values" of the website). Admins of the website only.
+     * Marks campaign values as accepted for one website: they count as clean from now on and no longer appear as findings
+     * (the website setting "Accepted values"). Use it when a value that looks wrong is right for this website.
      *
-     * @param int $idSite
-     * @param string|string[] $values one value, several separated by line breaks, or an array
-     * @return array{accepted: int}
+     * Admins of the website only; POST only. At most 500 accepted values per website; bad input answers with HTTP 400.
+     * Undo: remove the value from the website setting "Accepted values".
+     *
+     * @param int $idSite the website: one website ID (admin access needed)
+     * @param string|string[] $values the values exactly as they appear in the findings: one value, several separated by
+     *                                line breaks, or an array
+     * @return array{accepted: int} accepted: the number of accepted values of the website afterwards
      */
     public function acceptValues($idSite, $values)
     {
@@ -313,10 +342,12 @@ class API extends \Piwik\Plugin\API
      * server sends the vote to Feinwerk, never the browser. Only the plugin's own questions, one vote per user and
      * question every 10 seconds, nothing when feedback is switched off; store errors never reach the user.
      *
-     * @param int $idSite
-     * @param string $topic report or widget
+     * Not needed for working with campaign data; POST only; unknown topics or votes answer with HTTP 400.
+     *
+     * @param int $idSite the website the report was shown for (view access needed)
+     * @param string $topic report (under the Campaign Score report) or widget (in the dashboard widget)
      * @param string $vote up or down
-     * @return array{sent: bool}
+     * @return array{sent: bool} sent: whether the vote went to Feinwerk (false when feedback is switched off or throttled)
      */
     public function sendFeedback($idSite, $topic, $vote)
     {
