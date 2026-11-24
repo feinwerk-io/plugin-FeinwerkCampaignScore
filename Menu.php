@@ -31,9 +31,15 @@ class Menu extends \Piwik\Plugin\Menu
             if (ConnectorInstaller::decide($env) === ConnectorInstaller::HIDDEN || !ConnectorInstaller::claim()) {
                 return;
             }
+            if (method_exists($menu, 'registerMenuIcon')) {
+                // the icon of the connector's own section. Matomo applies a section icon only when the section itself is
+                // added as an entry (as PrivacyManager does): without it the left menu shows its default arrow.
+                $menu->registerMenuIcon('FeinwerkCampaignScore_ConnectorInstallerSection', 'icon-marketplace');
+                $menu->addItem('FeinwerkCampaignScore_ConnectorInstallerSection', null, [], 1);
+            }
             $menu->addItem(
                 'FeinwerkCampaignScore_ConnectorInstallerSection',
-                $env['present']
+                ConnectorInstaller::usableFiles($env)
                     ? 'FeinwerkCampaignScore_ConnectorInstallerMenuActivate'
                     : 'FeinwerkCampaignScore_ConnectorInstallerMenu',
                 $this->urlForAction('connectorInstaller'),

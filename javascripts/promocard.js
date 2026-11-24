@@ -24,7 +24,7 @@
 (function () {
     'use strict';
 
-    var VERSION = 3;
+    var VERSION = 4;
     if ((window.fwpromoCardKit || 0) >= VERSION) {
         return;
     }
@@ -55,6 +55,52 @@
             return at > 0 && Date.now() - at < days * DAY;
         } catch (e) {
             return false;
+        }
+    }
+
+    // Version 4 (2026-11-23): a card narrower than NARROW px (a dashboard column at 768 px is about 232 px) wraps: no
+    // logo, the link under the text, the sentence on up to three lines (fwpromo-card--narrow); after an x the focus
+    // moves to the next card's link, or to the next control of the page.
+    var NARROW = 300;
+    function fit(card) {
+        card.classList.toggle('fwpromo-card--narrow', card.clientWidth > 0 && card.clientWidth < NARROW);
+    }
+    var resizeObserver = typeof window.ResizeObserver === 'function'
+        ? new window.ResizeObserver(function (entries) {
+            entries.forEach(function (entry) {
+                fit(entry.target);
+            });
+        })
+        : null;
+    // measured once shown and whenever its width changes; also a card an older copy showed first (data-fwpromo-fit)
+    function watch(card) {
+        if (card.hasAttribute('data-fwpromo-fit')) {
+            return;
+        }
+        card.setAttribute('data-fwpromo-fit', '1');
+        fit(card);
+        if (resizeObserver) {
+            resizeObserver.observe(card);
+        }
+    }
+    function show(item) {
+        item.setAttribute('data-fwpromo-ready', '1');
+        if (item.classList.contains('fwpromo-card')) {
+            watch(item);
+        }
+    }
+    var FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), '
+        + 'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    function focusAfter(node) {
+        if (!document.documentElement.contains(node)) {
+            return;
+        }
+        var all = document.querySelectorAll(FOCUSABLE);
+        for (var i = 0; i < all.length; i++) {
+            if (!node.contains(all[i]) && (node.compareDocumentPosition(all[i]) & 4) && all[i].offsetParent !== null) {
+                all[i].focus();
+                return;
+            }
         }
     }
 
@@ -135,7 +181,7 @@
             }
         }
         if (waiting) {
-            waiting.setAttribute('data-fwpromo-ready', '1');
+            show(waiting);
         } else if (!fromTemplate(group)) {
             finish(group);
         }
@@ -166,13 +212,14 @@
         if (dismissed(card) || document.querySelector('.fwpromo-card[data-fwpromo-ready]')) {
             remove(card);
         } else {
-            card.setAttribute('data-fwpromo-ready', '1');
+            show(card);
         }
     }
 
     function prepare() {
         Array.prototype.forEach.call(document.querySelectorAll(GROUP + ':not([data-fwpromo-started])'), startGroup);
         Array.prototype.forEach.call(document.querySelectorAll('.fwpromo-card:not([data-fwpromo-ready])'), startCard);
+        Array.prototype.forEach.call(document.querySelectorAll('.fwpromo-card[data-fwpromo-ready]:not([data-fwpromo-fit])'), watch);
         // demo: an older copy that came first knows no session hiding and may have shown a card hidden this session
         Array.prototype.forEach.call(document.querySelectorAll('.fwpromo-card[data-fwpromo-demo][data-fwpromo-ready]'), function (card) {
             if (dismissed(card)) {
@@ -185,7 +232,10 @@
     document.addEventListener('click', function (event) {
         var button = event.target && event.target.closest ? event.target.closest(CLOSE) : null;
         var item = button ? button.closest(ITEM) : null;
-        if (!item || !(item.closest(GROUP) || item.classList.contains('fwpromo-card'))) {
+        // an older copy (version 3 also listens in the capture phase) may have removed the item already
+        if (!item || !document.documentElement.contains(item)
+            || !(item.closest(GROUP) || item.classList.contains('fwpromo-card'))
+        ) {
             return;
         }
         event.preventDefault();
@@ -196,10 +246,22 @@
             // storage blocked: hidden on this page only
         }
         var group = item.closest(GROUP);
+        // where the focus goes once the item is gone: the next item's link, else the next control after it. The anchor
+        // sits after the group, which finish() may remove with its last item.
+        var anchor = document.createElement('span');
+        var after = group || item;
+        after.parentNode.insertBefore(anchor, after.nextSibling);
         remove(item);
         if (group) {
             advance(group);
         }
+        var next = group && document.documentElement.contains(group) ? group.querySelector('[data-fwpromo-ready] a[href]') : null;
+        if (next) {
+            next.focus();
+        } else if (document.documentElement.contains(anchor)) {
+            focusAfter(anchor);
+        }
+        remove(anchor);
     }, true);
 
     if (typeof window.MutationObserver === 'function') {

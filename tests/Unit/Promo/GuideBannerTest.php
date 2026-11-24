@@ -37,7 +37,8 @@ class GuideBannerTest extends TestCase
         $guide = GuideBanner::variables(true, false, 82.6, 'index.php?module=FeinwerkCampaignScore&action=downloadConvention', 'de', [self::class, 'translate']);
 
         $this->assertSame('campaigns-guide', $guide['id']);
-        $this->assertSame(30, $guide['days']);
+        // one x pauses the whole place for 30 days; each banner stays away 90 days, so the next one shows after the pause
+        $this->assertSame([90, 30], [$guide['days'], $guide['pauseDays']]);
         $this->assertSame('Feinwerk Campaigns', $guide['title']);
         $this->assertSame('[FeinwerkCampaignScore_GuideTextGap:17]', $guide['text']);
         $this->assertCount(3, $guide['steps']);
@@ -56,12 +57,14 @@ class GuideBannerTest extends TestCase
         $this->assertSame('[FeinwerkCampaignScore_GuideText]', GuideBanner::variables(true, false, null, null, 'en', $translate)['text']);
     }
 
-    public function test_withoutAConventionToExportTheGuideStartsWithTheUpload(): void
+    /** Regression (UI review 2026-11-23): without a file to export, "Upload it" named a file nobody was offered. */
+    public function test_withoutAConventionToExportTheGuideHasNoSteps(): void
     {
         $guide = GuideBanner::variables(true, false, null, null, 'en', [self::class, 'translate']);
 
-        $this->assertCount(2, $guide['steps']);
-        $this->assertSame('[FeinwerkCampaignScore_GuideStepUpload]', $guide['steps'][0]['title']);
+        $this->assertSame([], $guide['steps']);
+        $this->assertSame('[FeinwerkCampaignScore_GuideText]', $guide['text'], 'text and link stay');
+        $this->assertSame([], GuideBanner::variables(true, false, 80.0, '', 'en', [self::class, 'translate'])['steps']);
     }
 
     public function test_theLinksCarryTheCampaignOfTheGuide(): void
@@ -103,7 +106,7 @@ class GuideBannerTest extends TestCase
         $normal = GuideBanner::variables(true, false, 80.0, null, 'en', $translate);
         $demo = GuideBanner::variables(true, false, 80.0, null, 'en', $translate, true);
 
-        $this->assertSame([30, false], [$normal['days'], $normal['demo']]);
-        $this->assertSame([0, true], [$demo['days'], $demo['demo']]);
+        $this->assertSame([90, 30, false], [$normal['days'], $normal['pauseDays'], $normal['demo']]);
+        $this->assertSame([0, 0, true], [$demo['days'], $demo['pauseDays'], $demo['demo']], 'demo: no pause, every banner in turn');
     }
 }

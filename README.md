@@ -206,8 +206,22 @@ switch the aliases off.
 - `FeinwerkCampaignScore.acceptValues`: accepts values for a website (`idSite`, `values`, one per line); admins of the
   website only.
 
-Unless noted otherwise they take `idSite` (one website), `period`, `date` and `segment`, and need view access to the
-website.
+Unless noted otherwise they take `idSite` (one website), `period` (`day`, `week`, `month`, `year` or `range`), `date`
+(`YYYY-MM-DD`, `today`, `yesterday`, a range `YYYY-MM-DD,YYYY-MM-DD`, or `lastN`/`previousN` for several periods) and an
+optional `segment`, and need view access to the website. Wrong input answers with HTTP 400 and a message that names the
+parameter and the allowed values.
+
+Examples (add `&token_auth=...` or call them from within Matomo):
+
+    index.php?module=API&method=FeinwerkCampaignScore.getScore&idSite=1&period=month&date=yesterday&format=json
+    index.php?module=API&method=FeinwerkCampaignScore.getScore&idSite=1&period=week&date=last12&format=json
+    index.php?module=API&method=FeinwerkCampaignScore.getFindings&idSite=1&period=month&date=yesterday&format=json
+    index.php?module=API&method=FeinwerkCampaignScore.getCorrections&idSite=1&period=month&date=yesterday&format=csv
+    index.php?module=API&method=FeinwerkCampaignScore.getConvention&idSite=1&period=month&date=yesterday&format=json
+    index.php?module=API&method=FeinwerkCampaignScore.getScoresForAllSites&period=month&date=yesterday&format=json
+
+`acceptValues` takes POST only, for example `module=API&method=FeinwerkCampaignScore.acceptValues&idSite=1&values=e-mail`
+in the request body; it answers with the number of accepted values of the website.
 
 ## Privacy features
 
@@ -242,8 +256,9 @@ admin access to at least one website and super users see them, and only in Matom
 results, email reports or embedded widgets. You see at most one tip per place and page:
 
 - beside the score card on the report page, a short guide to Feinwerk Campaigns (why, export the convention, upload
-  it, build clean links); after its "×" the paid Feinwerk plugins this Matomo does not have yet follow in the same
-  place, one at a time, each with its own "×". Super users open them in the Feinwerk Plugins screen of their Matomo
+  it, build clean links). Its "×" empties the place for 30 days, and the score card takes the whole width; after that
+  the paid Feinwerk plugins this Matomo does not have yet follow in the same place, one at a time, and each "×" again
+  empties the place for 30 days. Super users open them in the Feinwerk Plugins screen of their Matomo
   (Feinwerk Marketplace Connector 5.5.0 or newer); admins, and everyone without the connector, get the plugin's page on
   plugins.feinwerk.io in a new tab. Without the connector the plugin uses a list it ships itself (no prices, nothing
   loaded),

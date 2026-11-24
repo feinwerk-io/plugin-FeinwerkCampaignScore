@@ -32,6 +32,7 @@
         </div>
     {% else %}
         <div class="fwcs-card__meta">{{ card.noData }}</div>
+        <div class="fwcs-card__meta">{{ card.noDataHint }}</div>
         {% if card.hint and asDashboardWidget %}<div class="fwcs-card__meta">{{ card.hint }}</div>{% endif %}
     {% endif %}
 
@@ -43,9 +44,9 @@
             <ul class="fwcs-card__problems">
                 {% for problem in card.problems %}
                     <li>
-                        <span class="fwcs-card__problem">{{ problem.problem }} ({{ problem.field }}):</span>
                         <span class="fwcs-card__value">{{ problem.value|rawSafeDecoded }}</span>
-                        <span class="fwcs-card__visits">{{ problem.visits }}</span>
+                        <span class="fwcs-card__visits" title="{{ 'General_ColumnNbVisits'|translate }}">{{ problem.visits }}</span>
+                        <span class="fwcs-card__problem">{{ problem.problem }} ({{ problem.field }}){% if problem.suggestion %} <span aria-hidden="true">&rarr;</span> <span class="fwcs-card__suggestion">{{ problem.suggestion|rawSafeDecoded }}</span>{% endif %}</span>
                     </li>
                 {% endfor %}
             </ul>

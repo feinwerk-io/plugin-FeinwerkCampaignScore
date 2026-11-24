@@ -16,6 +16,8 @@
     --fwcs-accent-soft: rgba(14, 124, 123, .08);
     --fwcs-dot: rgba(14, 124, 123, .22);
     --fwcs-line: var(--theme-color-border, #e5e7eb);
+    /* the petrol for small text on the tinted step (4.5:1 there; the brand petrol alone is 4.1:1) */
+    --fwcs-brand-strong: #0a6564;
 }
 
 [data-theme-mode="dark"] .fwcs-banner,
@@ -27,6 +29,7 @@
     --fwcs-brand-soft: rgba(159, 216, 210, .10);
     --fwcs-accent-soft: rgba(159, 216, 210, .12);
     --fwcs-dot: rgba(159, 216, 210, .24);
+    --fwcs-brand-strong: #9fd8d2;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,6 +42,7 @@
         --fwcs-brand-soft: rgba(159, 216, 210, .10);
         --fwcs-accent-soft: rgba(159, 216, 210, .12);
         --fwcs-dot: rgba(159, 216, 210, .24);
+        --fwcs-brand-strong: #9fd8d2;
     }
 }
 
@@ -66,9 +70,15 @@
     align-items: stretch;
 }
 
-/* when the rotation has nothing left (promocard.js removes the group): the score card takes the whole width */
-.fwcs-split:not(:has(> .fwcs-split__side)) {
+/* when the rotation has nothing left (promocard.js removes the group), or while one x pauses the whole place
+   (javascripts/scoresplit.js): the score card takes the whole width */
+.fwcs-split:not(:has(> .fwcs-split__side)),
+.fwcs-split.fwcs-split--paused {
     grid-template-columns: minmax(0, 1fr);
+}
+
+.fwcs-split.fwcs-split--paused > .fwcs-split__side {
+    display: none;
 }
 
 .fwcs-split__side {
@@ -97,6 +107,12 @@
     justify-content: center;
     align-items: center;
     padding-bottom: 24px;
+}
+
+/* the empty card: both lines as one centred block (UI review 2026-11-24) */
+.fwcs-split__main > .card-content > .fwcs-card > .fwcs-card__meta {
+    max-width: 60ch;
+    text-align: center;
 }
 
 .fwcs-split .fwcs-card__head {
@@ -138,7 +154,7 @@
 
 /* the convention export is a step of the guide: hidden here only while the guide shows, so it stays reachable when the
    guide is hidden, not offered, or a browser lacks :has() or the script */
-.fwcs-split:has(.fwcs-banner--guide[data-fwpromo-ready]) .fwcs-card__export-alt {
+.fwcs-split:not(.fwcs-split--paused):has(.fwcs-banner--guide[data-fwpromo-ready]) .fwcs-card__export-alt {
     display: none;
 }
 
@@ -290,6 +306,11 @@
     background: var(--fwcs-brand-soft);
 }
 
+.fwcs-banner .fwcs-banner__close:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring, var(--fwcs-brand));
+    outline-offset: 2px;
+}
+
 /* the guide: why, then export, upload, build links */
 .fwcs-guide__title {
     font-size: 13px;
@@ -331,6 +352,11 @@
 .fwcs-step--next .fwcs-step__link {
     border-color: var(--fwcs-brand);
     background: var(--fwcs-accent-soft);
+}
+
+.fwcs-step--next .fwcs-step__num {
+    border-color: var(--fwcs-brand-strong);
+    color: var(--fwcs-brand-strong);
 }
 
 .fwcs-step__num {

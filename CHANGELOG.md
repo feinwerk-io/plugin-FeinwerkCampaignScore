@@ -1,5 +1,21 @@
 # Changelog
 
+## 6.1.0
+
+- The findings table stays readable on tablets and phones: values and where they occur wrap at word boundaries, and every column starts at the top.
+- "Campaign Score of all websites" no longer makes the page scroll sideways on phones; its headers wrap and the table scrolls within its box.
+- Dashboard widget: each of the largest problems shows the value and its visits on the first line and the problem below, also in a narrow dashboard column.
+- Without campaign visits in the period the findings say so instead of "No problems found" (and where campaign visits could not be checked, they say that and why), the score card names the next step, and the guide to Feinwerk Campaigns shows no steps for a file that cannot be exported.
+- Accepting a value uses Matomo's own dialog, which follows dark mode, and an error is shown with its reason in every language.
+- Better contrast for the amber score and the first step of the guide.
+- The findings table shows the fix right beside the value: Value, Suggestion and Visits, with the problem and the field as a small line under the value; exports and the API keep every column. French puts its space before the colon.
+- Dashboard widget: each of the largest problems also shows its suggestion.
+- Accepting a value asks a short question with the explanation below it.
+- Beside the score card, "×" now empties the place for 30 days; only then the next note follows there.
+- API: every method describes its parameters with their allowed values, and wrong input gets a message that names the parameter, the value given and what is allowed (HTTP 400); the README has an example call for each method.
+- "Install Feinwerk Connector": the button shows "Installing the connector…" and takes no second click, the page speaks the language of Matomo, connector files that do not fit this Matomo are installed again instead of activated, and "Feinwerk Plugins" in the administration menu has its icon.
+- The tip on Matomo's administration home now sits below Matomo's own notices, and the small Feinwerk Campaigns card in the dashboard widget wraps in a narrow column; every "×" of the notes is easier to hit and keeps the keyboard focus on the page.
+
 ## 6.0.0
 
 The first stable version for Matomo 6. It brings together everything of the 6.0.0 betas:

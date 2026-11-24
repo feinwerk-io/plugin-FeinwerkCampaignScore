@@ -11,6 +11,7 @@
     {% elseif sites|default is empty %}
         <div class="fwcs-card__meta">{{ 'FeinwerkCampaignScore_ScoreNoData'|translate }}</div>
     {% else %}
+        <div class="fwcs-allsites__scroll">
         <table class="fwcs-allsites__table">
             <thead>
                 <tr>
@@ -31,6 +32,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% if limited|default %}<div class="fwcs-card__meta">{{ limited }}</div>{% endif %}
     {% endif %}
 </div>

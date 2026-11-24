@@ -118,18 +118,30 @@ class ScoreCardTest extends TestCase
 
         $this->assertFalse($card['hasData']);
         $this->assertSame('[FeinwerkCampaignScore_ScoreNoData]', $card['noData']);
+        $this->assertSame('[FeinwerkCampaignScore_ScoreNoDataHint]', $card['noDataHint']);
+    }
+
+    /** Regression (release review 2026-11-24): campaign visits none of which could be checked are no "no campaign visits". */
+    public function test_withCampaignVisitsButNoneCheckable_saysWhyNotTheParameterAdvice(): void
+    {
+        $card = self::card(['clean_visits' => 0, 'checked_visits' => 0, 'campaign_visits' => 12, 'unchecked_visits' => 12, 'with_source_medium' => 1, 'findings' => 0]);
+
+        $this->assertFalse($card['hasData']);
+        $this->assertSame('[FeinwerkCampaignScore_ScoreNoneChecked]', $card['noData']);
+        $this->assertSame('[FeinwerkCampaignScore_ScoreUnchecked:n12]', $card['noDataHint']);
     }
 
     public function test_problems_areTheGivenFindingsReadable(): void
     {
         $card = self::card(self::score(), [
-            ['label' => 'Newsletter, newsletter', 'type' => 'variants', 'field' => 'name', 'nb_visits' => 50, 'values' => ['Newsletter' => 30, 'newsletter' => 20]],
+            ['label' => 'Newsletter, newsletter', 'type' => 'variants', 'field' => 'name', 'nb_visits' => 50, 'values' => ['Newsletter' => 30, 'newsletter' => 20], 'suggestion' => 'newsletter'],
             ['label' => '', 'type' => 'incomplete', 'field' => 'medium', 'nb_visits' => 7, 'values' => []],
         ]);
 
+        // with the suggestion where there is one (design D2 of the UI review 2026-11-24)
         $this->assertSame([
-            ['problem' => '[FeinwerkCampaignScore_TypeVariants]', 'field' => '[FeinwerkCampaignScore_FieldName]', 'value' => 'Newsletter (n30), newsletter (n20)', 'visits' => 'n50'],
-            ['problem' => '[FeinwerkCampaignScore_TypeIncomplete]', 'field' => '[FeinwerkCampaignScore_FieldMedium]', 'value' => '[FeinwerkCampaignScore_EmptyValue]', 'visits' => 'n7'],
+            ['problem' => '[FeinwerkCampaignScore_TypeVariants]', 'field' => '[FeinwerkCampaignScore_FieldName]', 'value' => 'Newsletter (n30), newsletter (n20)', 'visits' => 'n50', 'suggestion' => 'newsletter'],
+            ['problem' => '[FeinwerkCampaignScore_TypeIncomplete]', 'field' => '[FeinwerkCampaignScore_FieldMedium]', 'value' => '[FeinwerkCampaignScore_EmptyValue]', 'visits' => 'n7', 'suggestion' => ''],
         ], $card['problems']);
     }
 }

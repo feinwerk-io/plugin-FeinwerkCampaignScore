@@ -75,6 +75,8 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
     {
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/promo.js';
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/promocard.js';
+        $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/connectorinstaller.js';
+        $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/scoresplit.js';
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/feedback.js';
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/accept.js';
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/allsites.js';
@@ -83,8 +85,12 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
     /** Texts of the row action "accept value" (javascripts/accept.js). */
     public function getClientSideTranslationKeys(&$translationKeys)
     {
-        foreach (['AcceptRowAction', 'AcceptRowActionTooltip', 'AcceptConfirm', 'AcceptDone'] as $key) {
+        foreach (['AcceptRowAction', 'AcceptRowActionTooltip', 'AcceptConfirm', 'AcceptConfirmText', 'AcceptFailed'] as $key) {
             $translationKeys[] = 'FeinwerkCampaignScore_' . $key;
+        }
+        // Matomo's own button labels of the accept dialog
+        foreach (['General_Yes', 'General_No', 'General_Ok'] as $key) {
+            $translationKeys[] = $key;
         }
     }
 
@@ -94,6 +100,7 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/promo.css';
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/feinwerklogo.css';
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/promocard.css';
+        $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/connectorinstaller.css';
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/guide.css';
         $stylesheets[] = 'plugins/FeinwerkCampaignScore/stylesheets/feedback.css';
     }

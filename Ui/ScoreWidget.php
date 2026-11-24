@@ -97,7 +97,7 @@ final class ScoreWidget
         $view->guide = $guide;
         $view->premium = $guide !== null ? PremiumPromo::plugins() : [];
         $view->askSuperUser = $view->premium !== [] ? PremiumPromo::askSuperUser() : '';
-        $view->premiumDays = $guide !== null && $guide['demo'] ? 0 : GuideBanner::DAYS;
+        $view->premiumDays = $guide !== null && $guide['demo'] ? 0 : GuideBanner::ITEM_DAYS;
         $view->premiumDemo = $guide !== null && $guide['demo'];
         $view->premiumLabel = Piwik::translate('FeinwerkCampaignScore_GuideLabel');
         $view->premiumCta = Piwik::translate('FeinwerkCampaignScore_GuideCta');
