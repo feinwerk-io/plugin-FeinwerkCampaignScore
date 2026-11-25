@@ -36,6 +36,13 @@ final class PremiumPromo
 {
     /** how many candidates the rotation carries */
     public const MAX = 3;
+    /**
+     * The kit's names for the place's days (promocard.js 5, pausable places): any x empties the place beside the score
+     * card for PAUSE_DAYS, the closed banner stays away ITEM_DAYS (Peter, 2026-11-24: "Ein × blendet alles 30 Tage aus").
+     * The guide and the paid plugins share the place, so the values are the guide's.
+     */
+    public const PAUSE_DAYS = GuideBanner::DAYS;
+    public const ITEM_DAYS = GuideBanner::ITEM_DAYS;
     public const CONNECTOR = 'FeinwerkMarketplaceConnector';
     public const HELPER = 'Piwik\\Plugins\\FeinwerkMarketplaceConnector\\Promotions';
 

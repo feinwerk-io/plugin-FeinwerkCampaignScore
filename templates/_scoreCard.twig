@@ -11,7 +11,9 @@
                 <svg class="fwcs-sparkline" viewBox="0 0 {{ sparklineWidth }} {{ sparklineHeight }}" width="{{ sparklineWidth }}"
                      height="{{ sparklineHeight }}" role="img" aria-label="{{ 'FeinwerkCampaignScore_SparklineTitle'|translate }}">
                     <title>{{ 'FeinwerkCampaignScore_SparklineTitle'|translate }}</title>
-                    <polyline points="{{ sparkline }}" fill="none" stroke="currentColor" stroke-width="2"
+                    {% if sparkline.gaps %}<path class="fwcs-sparkline__gap" d="{{ sparkline.gaps }}" fill="none" stroke="currentColor" stroke-width="1.5"
+                              stroke-dasharray="1 4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>{% endif %}
+                    <path d="{{ sparkline.line }}" fill="none" stroke="currentColor" stroke-width="2"
                               stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
                 </svg>
             {% endif %}
@@ -33,6 +35,7 @@
     {% else %}
         <div class="fwcs-card__meta">{{ card.noData }}</div>
         <div class="fwcs-card__meta">{{ card.noDataHint }}</div>
+        {% if longerPeriodUrl|default %}<a class="fwcs-card__link" href="{{ longerPeriodUrl }}">{{ longerPeriodLabel }}</a>{% endif %}
         {% if card.hint and asDashboardWidget %}<div class="fwcs-card__meta">{{ card.hint }}</div>{% endif %}
     {% endif %}
 
@@ -51,7 +54,7 @@
                 {% endfor %}
             </ul>
         {% endif %}
-        <a class="fwcs-card__link" href="{{ reportUrl }}">{{ 'FeinwerkCampaignScore_ShowAllFindings'|translate }}</a>
+        {% if reportUrl %}<a class="fwcs-card__link" href="{{ reportUrl }}">{{ 'FeinwerkCampaignScore_ShowAllFindings'|translate }}</a>{% endif %}
     {% endif %}
 
     {% if promoCard|default %}{% include '@FeinwerkCampaignScore/_promoCard.twig' %}{% endif %}

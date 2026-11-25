@@ -103,10 +103,36 @@ final class ScoreWidget
         $view->premiumCta = Piwik::translate('FeinwerkCampaignScore_GuideCta');
         $view->premiumDismiss = Piwik::translate('FeinwerkCampaignScore_GuideDismiss');
         $view->asDashboardWidget = $asDashboardWidget;
-        $view->sparkline = self::sparkline($idSite, $period, $date, $params['segment']);
+        $history = self::history($idSite, $period, $date, $params['segment']);
+        $view->sparkline = $history !== null ? ScoreCard::sparkline($history['scores']) : null;
         $view->sparklineWidth = ScoreCard::SPARK_WIDTH;
         $view->sparklineHeight = ScoreCard::SPARK_HEIGHT;
-        $view->reportUrl = self::reportUrl($idSite, $period, $date);
+        // an embedded widget (Widgetize, disableLink=1) links nowhere into Matomo
+        $view->reportUrl = $embedded ? '' : self::reportUrl($idSite, $period, $date, $params['segment']);
+        // no campaign visits: one click to a score (UI review 2026-11-25 D6). The latest of the periods before that has
+        // a score, else the month (only when it has campaign visits) or the year of the same date
+        $view->longerPeriodUrl = '';
+        $view->longerPeriodLabel = '';
+        if (!$embedded && empty($card['hasData']) && !($scoreRow && (int) $scoreRow->getColumn('campaign_visits') > 0)
+            && strpos($date, ',') === false && !preg_match('/^(last|previous)\d+$/', $date)
+        ) {
+            $last = $history !== null ? ScoreCard::lastScoredBefore($history['scores']) : null;
+            if ($last !== null && ($history['dates'][$last] ?? '') !== '') {
+                $view->longerPeriodUrl = self::reportUrl($idSite, $period, $history['dates'][$last], $params['segment']);
+                $view->longerPeriodLabel = Piwik::translate('FeinwerkCampaignScore_ScoreShowLastPeriod');
+            } else {
+                $longer = ScoreCard::longerPeriod($period);
+                if ($longer === 'month' && !self::hasCampaignVisits($idSite, 'month', $date, $params['segment'])) {
+                    $longer = 'year';
+                }
+                if ($longer !== null) {
+                    $view->longerPeriodUrl = self::reportUrl($idSite, $longer, $date, $params['segment']);
+                    $view->longerPeriodLabel = Piwik::translate(
+                        $longer === 'year' ? 'FeinwerkCampaignScore_ScoreShowYear' : 'FeinwerkCampaignScore_ScoreShowMonth'
+                    );
+                }
+            }
+        }
         $view->downloads = $downloads;
         $view->feedback = $asDashboardWidget && !$embedded ? FeedbackBar::forPage(FeedbackBar::TOPIC_WIDGET, $idSite) : '';
         // the card for Feinwerk Campaigns in the dashboard widget (house blueprint for dashboard widgets)
@@ -119,10 +145,13 @@ final class ScoreWidget
     }
 
     /**
-     * The points of the sparkline: the score of the selected period and the SPARK_PERIODS - 1 before it, for a day,
-     * week, month or year (one request per report for all of them). Null for a date range or on any error.
+     * The scores of the selected period and the SPARK_PERIODS - 1 before it, oldest first, with the start date of each
+     * period (YYYY-MM-DD), for a day, week, month or year (one request for all of them). Null for a date range, several
+     * periods or on any error.
+     *
+     * @return array{scores: list<float|null>, dates: list<string>}|null
      */
-    private static function sparkline(int $idSite, string $period, string $date, string $segment): ?string
+    private static function history(int $idSite, string $period, string $date, string $segment): ?array
     {
         try {
             if (!in_array($period, ['day', 'week', 'month', 'year'], true) || strpos($date, ',') !== false
@@ -142,14 +171,35 @@ final class ScoreWidget
                 return null;
             }
             $scores = [];
+            $dates = [];
             foreach ($table->getDataTables() as $child) {
                 $row = $child instanceof DataTable ? $child->getFirstRow() : false;
                 $score = $row ? $row->getColumn('score') : false;
                 $scores[] = $score === false ? null : (float) $score;
+                $periodObject = $child instanceof DataTable ? $child->getMetadata('period') : null;
+                $dates[] = $periodObject instanceof \Piwik\Period ? $periodObject->getDateStart()->toString() : '';
             }
-            return ScoreCard::sparkline($scores);
+            return ['scores' => $scores, 'dates' => $dates];
         } catch (\Throwable $e) {
             return null;
+        }
+    }
+
+    /** Whether the period has campaign visits (one archived score); true when it cannot be read, so the link stays. */
+    private static function hasCampaignVisits(int $idSite, string $period, string $date, string $segment): bool
+    {
+        try {
+            $table = self::lastTable(Request::processRequest('FeinwerkCampaignScore.getScore', [
+                'idSite' => $idSite,
+                'period' => $period,
+                'date' => $date,
+                'segment' => $segment,
+            ], []));
+            $row = $table ? $table->getFirstRow() : false;
+
+            return !$row || (int) $row->getColumn('campaign_visits') > 0;
+        } catch (\Throwable $e) {
+            return true;
         }
     }
 
@@ -179,16 +229,21 @@ final class ScoreWidget
         ];
     }
 
-    /** Acquisition > Campaign Score for the same website, period and date. */
-    public static function reportUrl(int $idSite, string $period, string $date): string
+    /**
+     * Acquisition > Campaign Score for the same website, period, date and segment. The raw segment is already
+     * URL-encoded as Matomo expects it (as in downloads()): appended as it is to both parts of the link.
+     */
+    public static function reportUrl(int $idSite, string $period, string $date, string $segment = ''): string
     {
         $query = ['idSite' => $idSite, 'period' => $period, 'date' => $date];
+        $segmentQuery = $segment !== '' ? '&segment=' . $segment : '';
 
         return 'index.php?' . Url::getQueryStringFromParameters(['module' => 'CoreHome', 'action' => 'index'] + $query)
+            . $segmentQuery
             . '#?' . Url::getQueryStringFromParameters($query + [
                 'category' => 'Referrers_Referrers',
                 'subcategory' => CampaignScoreSubcategory::ID,
-            ]);
+            ]) . $segmentQuery;
     }
 
     /** The table of the (last) period: the API returns a Map for several periods. */

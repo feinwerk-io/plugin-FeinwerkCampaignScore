@@ -21,9 +21,11 @@ class ApiErrorsTest extends TestCase
     public static function translate(string $key, array $args = []): string
     {
         $texts = [
-            'FeinwerkCampaignScore_ApiErrorPeriodNotHere' => 'Parameter period: "%1$s" is not possible here. Allowed: %2$s.',
-            'FeinwerkCampaignScore_ApiErrorOnePeriod' => 'Parameter date: "%1$s" names several periods.',
-            'FeinwerkCampaignScore_ApiErrorOnePeriodNoRange' => 'Parameter date: "%1$s" names several periods, no range.',
+            'FeinwerkCampaignScore_ApiErrorPeriodNotHere' => 'Parameter period: %1$s is not possible here. Allowed: %2$s.',
+            'FeinwerkCampaignScore_ApiErrorOnePeriod' => 'Parameter date: %1$s names several periods.',
+            'FeinwerkCampaignScore_ApiErrorOnePeriodNoRange' => 'Parameter date: %1$s names several periods, no range.',
+            'FeinwerkCampaignScore_ApiErrorBadValue' => 'Parameter %1$s: %2$s is not allowed. Allowed: %3$s.',
+            'FeinwerkCampaignScore_ApiErrorOneSite' => 'Parameter idSite: %1$s is not one website.',
         ];
 
         return vsprintf($texts[$key] ?? $key, $args);
@@ -32,12 +34,12 @@ class ApiErrorsTest extends TestCase
     public function test_the_messages_name_parameter_value_and_allowed_values(): void
     {
         $this->assertSame(
-            'Parameter period: "range" is not possible here. Allowed: day, week, month, year.',
+            'Parameter period: range is not possible here. Allowed: day, week, month, year.',
             ApiErrors::periodNotHere('range', ApiErrors::SINGLE_PERIODS, [self::class, 'translate'])
         );
-        $this->assertSame('Parameter date: "last8" names several periods.', ApiErrors::onePeriod('last8', [self::class, 'translate']));
+        $this->assertSame('Parameter date: last8 names several periods.', ApiErrors::onePeriod('last8', [self::class, 'translate']));
         $this->assertSame(
-            'Parameter date: "2026-11-01,2026-11-05" names several periods.',
+            'Parameter date: 2026-11-01,2026-11-05 names several periods.',
             ApiErrors::onePeriod('2026-11-01,2026-11-05', [self::class, 'translate'])
         );
     }
@@ -46,7 +48,7 @@ class ApiErrorsTest extends TestCase
     public function test_without_range_the_message_does_not_advise_a_range(): void
     {
         $this->assertSame(
-            'Parameter date: "last7" names several periods, no range.',
+            'Parameter date: last7 names several periods, no range.',
             ApiErrors::onePeriod('last7', [self::class, 'translate'], false)
         );
         foreach (['en', 'de', 'fr', 'es', 'it'] as $language) {
@@ -75,5 +77,40 @@ class ApiErrorsTest extends TestCase
                 $this->assertStringContainsString($word, $texts['ErrorFeedback'], $language . ' ' . $word);
             }
         }
+    }
+
+    /** Matomo's JSON output HTML-escapes quotes (&quot;), so the value stands without them in every language. */
+    public function test_no_quotes_around_the_value(): void
+    {
+        foreach (['en', 'de', 'fr', 'es', 'it'] as $language) {
+            $texts = json_decode((string) file_get_contents(__DIR__ . '/../../lang/' . $language . '.json'), true)['FeinwerkCampaignScore'];
+            foreach (['ApiErrorOnePeriod', 'ApiErrorOnePeriodNoRange', 'ApiErrorPeriodNotHere'] as $key) {
+                $this->assertSame(0, preg_match('/["«»]/u', $texts[$key]), $language . ' ' . $key);
+            }
+        }
+    }
+
+    public function test_a_flag_takes_1_0_true_false_and_refuses_anything_else(): void
+    {
+        foreach ([1, '1', 'true', 'TRUE', ' True ', true] as $yes) {
+            $this->assertTrue(ApiErrors::flag($yes), var_export($yes, true));
+        }
+        foreach ([0, '0', 'false', 'False', '', null, false] as $no) {
+            $this->assertFalse(ApiErrors::flag($no), var_export($no, true));
+        }
+        // "yes" must not count as "no": a dry run would save
+        foreach (['yes', 'no', '2', 'on', [], '1;'] as $bad) {
+            $this->assertNull(ApiErrors::flag($bad), var_export($bad, true));
+        }
+    }
+
+    public function test_bad_value_and_one_site_name_the_parameter(): void
+    {
+        $this->assertSame(
+            'Parameter dryRun: yes is not allowed. Allowed: 1, 0, true, false.',
+            ApiErrors::badValue('dryRun', 'yes', ApiErrors::FLAG_VALUES, [self::class, 'translate'])
+        );
+        $this->assertSame('Parameter idSite: 1,2 is not one website.', ApiErrors::oneSite('1,2', [self::class, 'translate']));
+        $this->assertSame('Parameter idSite: scriptalert1script is not one website.', ApiErrors::oneSite('<script>alert(1)</script>', [self::class, 'translate']));
     }
 }

@@ -81,10 +81,30 @@ class ScoreCardTest extends TestCase
 
     public function test_sparkline_pointsOnAFixedScaleFrom0To100(): void
     {
-        $this->assertSame('0,28 60,14 120,0', ScoreCard::sparkline([0.0, 50.0, 100.0]));
-        $this->assertSame('0,14 120,0', ScoreCard::sparkline([null, 50.0, 100.0]), 'periods without a score are left out');
-        $this->assertNull(ScoreCard::sparkline([80.0]), 'one point is no line');
+        $this->assertSame(['line' => 'M0,28L60,14L120,0', 'gaps' => ''], ScoreCard::sparkline([0.0, 50.0, 100.0]));
+        $this->assertSame(['line' => 'M60,14L120,0', 'gaps' => ''], ScoreCard::sparkline([null, 50.0, 100.0]), 'a period without a score keeps its place');
+        $this->assertSame(['line' => 'M0,0l0,0M80,14L120,28', 'gaps' => 'M0,0L80,14'], ScoreCard::sparkline([100.0, null, 50.0, 0.0]), 'a gap bridged, a single score as a dot');
+        $this->assertSame(['line' => 'M0,28L40,14M120,0l0,0', 'gaps' => 'M40,14L120,0'], ScoreCard::sparkline([0.0, 50.0, null, 100.0]));
+        $this->assertNull(ScoreCard::sparkline([null, 80.0, null]), 'one score is no line');
+        $this->assertNull(ScoreCard::sparkline([80.0]));
         $this->assertNull(ScoreCard::sparkline([]));
+    }
+
+    public function test_lastScoredBefore_theLatestEarlierPeriodWithAScore(): void
+    {
+        $this->assertSame(2, ScoreCard::lastScoredBefore([80.0, null, 75.0, null, null]));
+        $this->assertSame(0, ScoreCard::lastScoredBefore([80.0, null]));
+        $this->assertNull(ScoreCard::lastScoredBefore([null, null, 90.0]), 'the selected period itself does not count');
+        $this->assertNull(ScoreCard::lastScoredBefore([]));
+    }
+
+    public function test_longerPeriod_monthForDayAndWeek_yearForMonth(): void
+    {
+        $this->assertSame('month', ScoreCard::longerPeriod('day'));
+        $this->assertSame('month', ScoreCard::longerPeriod('week'));
+        $this->assertSame('year', ScoreCard::longerPeriod('month'));
+        $this->assertNull(ScoreCard::longerPeriod('year'));
+        $this->assertNull(ScoreCard::longerPeriod('range'));
     }
 
     public function test_level_followsTheScore(): void

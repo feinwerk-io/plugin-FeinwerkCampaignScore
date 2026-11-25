@@ -33,6 +33,46 @@ final class ApiErrors
         return (string) $translate('FeinwerkCampaignScore_ApiErrorPeriodNotHere', [self::shown($period), $allowed]);
     }
 
+    /** the values a yes/no parameter such as dryRun accepts (machine values, not translated) */
+    public const FLAG_VALUES = '1, 0, true, false';
+
+    /**
+     * A yes/no parameter: true for 1 and true, false for 0, false and an empty value (any case, spaces ignored); null for
+     * anything else, which the API refuses (a value like "yes" must not count as "no" and save).
+     *
+     * @param mixed $value
+     */
+    public static function flag($value): ?bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (!is_scalar($value) && $value !== null) {
+            return null;
+        }
+        $text = strtolower(trim((string) $value));
+        if (in_array($text, ['1', 'true'], true)) {
+            return true;
+        }
+        if (in_array($text, ['', '0', 'false'], true)) {
+            return false;
+        }
+
+        return null;
+    }
+
+    /** "Parameter <name>: <value> is not allowed. Allowed: <allowed>." */
+    public static function badValue(string $parameter, $value, string $allowed, callable $translate): string
+    {
+        return (string) $translate('FeinwerkCampaignScore_ApiErrorBadValue', [$parameter, self::shown($value), $allowed]);
+    }
+
+    /** "Parameter idSite: <value> is not one website. Pass a single website ID, for example 1." */
+    public static function oneSite($idSite, callable $translate): string
+    {
+        return (string) $translate('FeinwerkCampaignScore_ApiErrorOneSite', [self::shown($idSite)]);
+    }
+
     /**
      * "Parameter date: <value> names several periods. This method needs one period: ...", with the range form only for
      * methods that take period=range ($rangeAllowed false: getScoresForAllSites, whose range error would follow next).

@@ -25,4 +25,18 @@ class FindingsEmptyMessageTest extends TestCase
         $this->assertSame('FeinwerkCampaignScore_NoProblems', GetFindings::emptyMessageKey(['campaign' => 12, 'checked' => 12]));
         $this->assertSame('FeinwerkCampaignScore_NoProblems', GetFindings::emptyMessageKey(null), 'unknown basis: as before');
     }
+
+    /** D5 (Peter, 2026-11-24): the visible "Accept" of rows without a suggestion, its texts escaped. */
+    public function test_the_accept_button_is_a_plain_escaped_button(): void
+    {
+        $button = GetFindings::acceptButton('Accept <value>', 'Count "this" as clean');
+        $this->assertStringStartsWith('<button type="button" class="fwcs-accept-btn"', $button);
+        $this->assertStringContainsString('title="Count &quot;this&quot; as clean"', $button);
+        $this->assertStringContainsString('>Accept &lt;value&gt;</button>', $button);
+        $this->assertStringNotContainsString('aria-label', $button);
+
+        // a name per row for screen readers, escaped like the rest
+        $named = GetFindings::acceptButton('Accept value', 'Count as clean', 'Accept value: <b>fb</b> & "x"');
+        $this->assertStringContainsString('aria-label="Accept value: &lt;b&gt;fb&lt;/b&gt; &amp; &quot;x&quot;"', $named);
+    }
 }

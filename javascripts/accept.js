@@ -60,6 +60,22 @@
 
     // Matomo's own dialog (piwikHelper.modalConfirm follows Matomo's theme, also dark mode; the browser's dialog does
     // not), built once; the text is set as plain text. buttons: [[role, label], ...]
+    // where the keyboard focus goes back to when a dialog closes (UI review 2026-11-25 F2): the element that opened it,
+    // else the row's visible button; never the start of the page
+    var openerRow = null;
+    var opener = null;
+
+    function restoreFocus() {
+        var candidates = [opener, openerRow && document.body.contains(openerRow) ? openerRow.querySelector('.fwcs-accept-btn') : null];
+        for (var i = 0; i < candidates.length; i++) {
+            var element = candidates[i];
+            if (element && document.body.contains(element) && element.offsetParent !== null && typeof element.focus === 'function') {
+                element.focus();
+                return;
+            }
+        }
+    }
+
     function dialog(className, text, buttons, callbacks, detail) {
         if (!window.piwikHelper || typeof window.piwikHelper.modalConfirm !== 'function') {
             if (callbacks.yes && buttons.length > 1) {
@@ -95,7 +111,7 @@
             p.textContent = detail || '';
             p.style.display = detail ? '' : 'none';
         }
-        window.piwikHelper.modalConfirm(box, callbacks);
+        window.piwikHelper.modalConfirm(box, callbacks, {onCloseEnd: restoreFocus});
     }
 
     function showError(message) {
@@ -103,10 +119,18 @@
     }
 
     AcceptAction.prototype.trigger = function (tr) {
+        acceptRow(tr);
+    };
+
+    function acceptRow(tr) {
         var values = valuesOfRow(tr);
         if (!values.length || busy) {
             return;
         }
+        // Matomo's row action passes the row as a jQuery object, the visible button as an element
+        var row = tr && tr.jquery ? tr[0] : tr;
+        openerRow = row && row.nodeType === 1 ? row : null;
+        opener = openerRow && document.activeElement && openerRow.contains(document.activeElement) ? document.activeElement : null;
         var shown = values.map(decode).join(', ');
         // the question as the heading, the explanation as a paragraph, like Matomo's own confirmations
         dialog('fwcs-accept-confirm', translate('AcceptConfirm', [shown]),
@@ -115,7 +139,20 @@
                     send(values);
                 }
             }, translate('AcceptConfirmText'));
-    };
+    }
+
+    // the visible button in rows without a suggestion (Reports/GetFindings.php): the same confirmation and request.
+    // Capture phase: the click stops here, before Matomo's row handler, which on touch devices opens the row actions.
+    document.addEventListener('click', function (event) {
+        var button = event.target && event.target.closest ? event.target.closest('.fwcs-accept-btn') : null;
+        var tr = button ? button.closest('tr') : null;
+        if (!tr) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        acceptRow(tr);
+    }, true);
 
     function send(values) {
         if (busy) {

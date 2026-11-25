@@ -109,4 +109,22 @@ class GuideBannerTest extends TestCase
         $this->assertSame([90, 30, false], [$normal['days'], $normal['pauseDays'], $normal['demo']]);
         $this->assertSame([0, 0, true], [$demo['days'], $demo['pauseDays'], $demo['demo']], 'demo: no pause, every banner in turn');
     }
+
+    /**
+     * The place beside the score card is the kit's pausable place (promocard.js 5): any x empties it for 30 days, the
+     * closed banner stays away longer; demo mode keeps the plain rotation group (Peter, 2026-11-24).
+     */
+    public function test_the_place_is_a_pausable_place_of_the_kit_except_in_demo(): void
+    {
+        $this->assertSame(30, \Piwik\Plugins\FeinwerkCampaignScore\Promo\PremiumPromo::PAUSE_DAYS);
+        $this->assertGreaterThan(
+            \Piwik\Plugins\FeinwerkCampaignScore\Promo\PremiumPromo::PAUSE_DAYS,
+            \Piwik\Plugins\FeinwerkCampaignScore\Promo\PremiumPromo::ITEM_DAYS
+        );
+        $template = (string) file_get_contents(__DIR__ . '/../../../templates/_scoreSplit.twig');
+        $this->assertStringContainsString(
+            '{% if guide.pauseDays %} data-fwpromo-pausable="banner" data-fwpromo-pause="fwcs-guide" data-fwpromo-pause-days="{{ guide.pauseDays }}"{% else %} data-fwpromo-rotation="banner"{% endif %}',
+            $template
+        );
+    }
 }

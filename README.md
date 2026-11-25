@@ -203,8 +203,13 @@ switch the aliases off.
   `feinwerk-campaign-convention`, version 1).
 - `FeinwerkCampaignScore.getScoresForAllSites`: score, campaign visits and findings of every website you can view (at
   most 100, those with the most visits), for one day, week, month or year (`period`, `date`, `segment`).
+- `FeinwerkCampaignScore.getRules`: the rules a website is checked by (`idSite` only): `separator`, `name_pattern` and
+  `mediums`, each with its `value` and its `source` (`website`, `all_websites` or `default`), the `accepted_values` of the
+  website, and whether `source_aliases` and `typo_hints` are on.
 - `FeinwerkCampaignScore.acceptValues`: accepts values for a website (`idSite`, `values`, one per line); admins of the
   website only.
+- `FeinwerkCampaignScore.removeAcceptedValues`: takes accepted values back (`idSite`, `values`, one per line); admins of
+  the website only.
 
 Unless noted otherwise they take `idSite` (one website), `period` (`day`, `week`, `month`, `year` or `range`), `date`
 (`YYYY-MM-DD`, `today`, `yesterday`, a range `YYYY-MM-DD,YYYY-MM-DD`, or `lastN`/`previousN` for several periods) and an
@@ -219,9 +224,14 @@ Examples (add `&token_auth=...` or call them from within Matomo):
     index.php?module=API&method=FeinwerkCampaignScore.getCorrections&idSite=1&period=month&date=yesterday&format=csv
     index.php?module=API&method=FeinwerkCampaignScore.getConvention&idSite=1&period=month&date=yesterday&format=json
     index.php?module=API&method=FeinwerkCampaignScore.getScoresForAllSites&period=month&date=yesterday&format=json
+    index.php?module=API&method=FeinwerkCampaignScore.getRules&idSite=1&format=json
 
-`acceptValues` takes POST only, for example `module=API&method=FeinwerkCampaignScore.acceptValues&idSite=1&values=e-mail`
-in the request body; it answers with the number of accepted values of the website.
+`acceptValues` and `removeAcceptedValues` take POST only, for example
+`module=API&method=FeinwerkCampaignScore.acceptValues&idSite=1&values=e-mail&dryRun=1` in the request body. With
+`dryRun=1` (or `true`) they save nothing and only report what would change; `dryRun` takes only `1`, `0`, `true` or
+`false`. They answer with the number of accepted values of the
+website afterwards (`accepted`) and the values that changed: `added` and `already` (accepted before), or `removed` and
+`not_found` (not accepted).
 
 ## Privacy features
 

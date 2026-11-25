@@ -134,6 +134,11 @@
     overflow: visible;
 }
 
+/* periods without a score: a faint dotted bridge, so the line keeps every period in its place */
+.fwcs-sparkline__gap {
+    opacity: .55;
+}
+
 .fwcs-card__delta {
     margin-top: 2px;
     font-size: 12px;
@@ -228,6 +233,12 @@
         white-space: normal;
         overflow-wrap: anywhere;
     }
+
+    /* Visits: as narrow as its numbers, so value and suggestion get the room */
+    .fwcs-findings table.dataTable th:nth-child(3),
+    .fwcs-findings table.dataTable tr:not(.subDataTableContainer) td.column:nth-child(3) {
+        width: 1%;
+    }
 }
 
 /* a value with its context takes several lines: every cell starts at the top, like the value */
@@ -238,6 +249,12 @@
 /* all websites */
 .fwcs-allsites {
     padding: 8px 16px 12px;
+}
+
+/* in Matomo's report card the card already gives the side space (on the dashboard the widget does not) */
+.card-content .fwcs-allsites {
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .fwcs-allsites__table {
@@ -311,4 +328,37 @@
     margin-left: 6px;
     font-weight: 600;
     white-space: nowrap;
+}
+
+/* the visible "Accept value" in rows without a suggestion (admins): a quiet text button in Matomo's link colour */
+.fwcs-findings .fwcs-accept-btn {
+    /* breaks only between words, never inside "akzeptieren" (the suggestion cell may break anywhere on phones) */
+    overflow-wrap: normal;
+    word-break: normal;
+    padding: 2px 6px;
+    border: 1px solid var(--theme-color-border, #e0e0e0);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--theme-color-link, #1976d2);
+    font-size: 12px;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.fwcs-findings .fwcs-accept-btn:hover,
+.fwcs-findings .fwcs-accept-btn:focus {
+    background: transparent;
+    text-decoration: underline;
+}
+
+.fwcs-findings .fwcs-accept-btn:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring, var(--theme-color-link, #1976d2));
+    outline-offset: 2px;
+}
+
+/* the line under Matomo's campaign names report (Ui/CampaignsFooter) */
+.fwcs-campaigns-footer {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--theme-color-text-light, #444);
 }

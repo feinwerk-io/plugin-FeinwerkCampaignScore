@@ -305,36 +305,139 @@ class API extends \Piwik\Plugin\API
 
     /**
      * Marks campaign values as accepted for one website: they count as clean from now on and no longer appear as findings
-     * (the website setting "Accepted values"). Use it when a value that looks wrong is right for this website.
+     * (the website setting "Accepted values"). Use it when a value that looks wrong is right for this website; take one
+     * back with removeAcceptedValues.
      *
      * Admins of the website only; POST only. At most 500 accepted values per website; bad input answers with HTTP 400.
-     * Undo: remove the value from the website setting "Accepted values".
      *
      * @param int $idSite the website: one website ID (admin access needed)
      * @param string|string[] $values the values exactly as they appear in the findings: one value, several separated by
      *                                line breaks, or an array
-     * @return array{accepted: int} accepted: the number of accepted values of the website afterwards
+     * @param int|bool|string $dryRun 1 or true: only report what would change, save nothing; 0 or false: save; default 0.
+     *                              Any other value answers with HTTP 400
+     * @return array{accepted: int, added: list<string>, already: list<string>, dry_run: bool} accepted: the number of
+     *         accepted values of the website afterwards; added: the values that are new; already: the values that were
+     *         accepted before; dry_run: whether nothing was saved
      */
-    public function acceptValues($idSite, $values)
+    public function acceptValues($idSite, $values, $dryRun = 0)
     {
-        $idSite = (int) $idSite;
+        $idSite = $this->oneSite($idSite);
         Piwik::checkUserHasAdminAccess($idSite);
         if (!PluginFeedback::isAllowedMethod((string) ($_SERVER['REQUEST_METHOD'] ?? ''))) {
             throw new InvalidInputException('FeinwerkCampaignScore.acceptValues only accepts POST requests.');
         }
-        $list = is_array($values) ? $values : preg_split('/\r\n|\r|\n/', (string) $values);
-        $list = array_values(array_filter(array_map('trim', array_map('strval', $list ?: [])), 'strlen'));
+        $list = self::valueList($values);
         if ($list === []) {
             throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorNoValue'));
         }
+        $dryRun = self::dryRun($dryRun);
 
         $this->analyses = [];
         try {
-            return ['accepted' => (new MeasurableSettings($idSite))->accept($list)];
+            return (new MeasurableSettings($idSite))->accept($list, $dryRun) + ['dry_run' => $dryRun];
         } catch (\LengthException $e) {
             // more accepted values than a website can keep: the translated limit
             throw new InvalidInputException($e->getMessage());
         }
+    }
+
+    /**
+     * Takes accepted campaign values back for one website: they are checked again and appear as findings where they do
+     * not fit the rules. Use it to undo acceptValues.
+     *
+     * Admins of the website only; POST only. Values that are not accepted are reported, not refused; bad input (no
+     * value) answers with HTTP 400.
+     *
+     * @param int $idSite the website: one website ID (admin access needed)
+     * @param string|string[] $values the accepted values to take back: one value, several separated by line breaks, or an
+     *                                array (as getRules lists them in accepted_values)
+     * @param int|bool|string $dryRun 1 or true: only report what would change, save nothing; 0 or false: save; default 0.
+     *                              Any other value answers with HTTP 400
+     * @return array{accepted: int, removed: list<string>, not_found: list<string>, dry_run: bool} accepted: the number of
+     *         accepted values afterwards; removed: the values taken back; not_found: values that were not accepted;
+     *         dry_run: whether nothing was saved
+     */
+    public function removeAcceptedValues($idSite, $values, $dryRun = 0)
+    {
+        $idSite = $this->oneSite($idSite);
+        Piwik::checkUserHasAdminAccess($idSite);
+        if (!PluginFeedback::isAllowedMethod((string) ($_SERVER['REQUEST_METHOD'] ?? ''))) {
+            throw new InvalidInputException('FeinwerkCampaignScore.removeAcceptedValues only accepts POST requests.');
+        }
+        $list = self::valueList($values);
+        if ($list === []) {
+            throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorNoValue'));
+        }
+        $dryRun = self::dryRun($dryRun);
+
+        $this->analyses = [];
+
+        return (new MeasurableSettings($idSite))->removeAccepted($list, $dryRun) + ['dry_run' => $dryRun];
+    }
+
+    /**
+     * Returns the rules Campaign Score checks one website by, and where each rule comes from. Use it before changing a
+     * rule, or to explain a finding (for example why a medium counts as unusual).
+     *
+     * Change the rules in the website settings or the settings for all websites (Matomo's SitesManager and
+     * CorePluginsAdmin settings APIs, plugin FeinwerkCampaignScore), and accepted values with acceptValues and
+     * removeAcceptedValues.
+     *
+     * @param int $idSite the website: one website ID (view access needed)
+     * @return array<string, mixed> separator {value: any, hyphen or underscore; source}, name_pattern {value: a regular
+     *         expression without delimiters, or null; source}, mediums {value: the usual mediums, lowercase; source},
+     *         accepted_values (list, website only), source_aliases and typo_hints (true or false, all websites).
+     *         source is website, all_websites or default
+     */
+    public function getRules($idSite)
+    {
+        $idSite = $this->oneSite($idSite);
+        Piwik::checkUserHasViewAccess($idSite);
+
+        return ConventionFactory::rulesForSite($idSite);
+    }
+
+    /**
+     * The website of a request that works on one website: a positive website ID, else HTTP 400 naming idSite (before
+     * the access check, so the message tells nothing about access).
+     *
+     * @param mixed $idSite
+     */
+    private function oneSite($idSite): int
+    {
+        if (!is_scalar($idSite) || !preg_match('/^\d+$/', trim((string) $idSite)) || (int) $idSite <= 0) {
+            throw new InvalidInputException(ApiErrors::oneSite($idSite, [Piwik::class, 'translate']));
+        }
+
+        return (int) $idSite;
+    }
+
+    /**
+     * The dryRun parameter: 1/true or 0/false (ApiErrors::flag), else HTTP 400 naming dryRun and the allowed values.
+     *
+     * @param mixed $dryRun
+     */
+    private static function dryRun($dryRun): bool
+    {
+        $flag = ApiErrors::flag($dryRun);
+        if ($flag === null) {
+            throw new InvalidInputException(ApiErrors::badValue('dryRun', $dryRun, ApiErrors::FLAG_VALUES, [Piwik::class, 'translate']));
+        }
+
+        return $flag;
+    }
+
+    /**
+     * The values of a request: one value, several separated by line breaks, or an array; trimmed, empty ones dropped.
+     *
+     * @param mixed $values
+     * @return list<string>
+     */
+    private static function valueList($values): array
+    {
+        $list = is_array($values) ? $values : preg_split('/\r\n|\r|\n/', (string) $values);
+
+        return array_values(array_filter(array_map('trim', array_map('strval', $list ?: [])), 'strlen'));
     }
 
     /**
@@ -386,10 +489,7 @@ class API extends \Piwik\Plugin\API
      */
     private function analyze($idSite, $period, $date, $segment, bool $scoreOnly = false): array
     {
-        if (!is_numeric($idSite) || (int) $idSite <= 0) {
-            throw new InvalidInputException('FeinwerkCampaignScore checks one website at a time: idSite must be a single website ID.');
-        }
-        $idSite = (int) $idSite;
+        $idSite = $this->oneSite($idSite);
         Piwik::checkUserHasViewAccess($idSite);
 
         $period = (string) $period;
