@@ -70,15 +70,15 @@
     align-items: stretch;
 }
 
-/* when the rotation has nothing left (promocard.js removes the group), or while one x pauses the whole place
-   (javascripts/scoresplit.js): the score card takes the whole width */
-.fwcs-split:not(:has(> .fwcs-split__side)),
-.fwcs-split.fwcs-split--paused {
-    grid-template-columns: minmax(0, 1fr);
+/* straight in the widget, without Matomo's card around it: the same space above and below as Matomo's cards */
+.theWidgetContent > .fwcs-split {
+    margin: 8px 0 16px;
 }
 
-.fwcs-split.fwcs-split--paused > .fwcs-split__side {
-    display: none;
+/* when the rotation has nothing left or the place is paused (promocard.js removes the group): the score card takes the
+   whole width */
+.fwcs-split:not(:has(> .fwcs-split__side)) {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .fwcs-split__side {
@@ -154,7 +154,7 @@
 
 /* the convention export is a step of the guide: hidden here only while the guide shows, so it stays reachable when the
    guide is hidden, not offered, or a browser lacks :has() or the script */
-.fwcs-split:not(.fwcs-split--paused):has(.fwcs-banner--guide[data-fwpromo-ready]) .fwcs-card__export-alt {
+.fwcs-split:has(.fwcs-banner--guide[data-fwpromo-ready]) .fwcs-card__export-alt {
     display: none;
 }
 
@@ -432,6 +432,20 @@
 @media (max-width: 1250px) {
     .fwcs-banner__art {
         flex-basis: 140px;
+    }
+}
+
+/* phones: the picture above the text, so the text gets the full width */
+@media (max-width: 600px) {
+    .fwcs-banner__head {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .fwcs-banner__art {
+        flex: none;
+        width: 160px;
+        max-width: 100%;
     }
 }
 

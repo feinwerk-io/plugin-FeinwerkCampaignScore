@@ -15,7 +15,9 @@
             {% include '@FeinwerkCampaignScore/_scoreCard.twig' with {split: true} %}
         </div>
     </div>
-    <div class="fwcs-split__side" data-fwpromo-rotation="banner"{% if guide.pauseDays %} data-fwcs-pause-days="{{ guide.pauseDays }}"{% endif %}><template>
+    {# the kit's pausable place (promocard.js 5): any x empties it for pauseDays, the closed banner stays away for its days;
+       demo mode keeps the plain rotation group #}
+    <div class="fwcs-split__side"{% if guide.pauseDays %} data-fwpromo-pausable="banner" data-fwpromo-pause="fwcs-guide" data-fwpromo-pause-days="{{ guide.pauseDays }}"{% else %} data-fwpromo-rotation="banner"{% endif %}><template>
         {% if guide %}
             <aside class="fwcs-banner fwcs-banner--guide" data-fwpromo-id="{{ guide.id }}" data-fwpromo-days="{{ guide.days }}"{% if guide.demo %} data-fwpromo-demo="1"{% endif %}
                    aria-label="{{ guide.label }}">

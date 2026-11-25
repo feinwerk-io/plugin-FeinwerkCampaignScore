@@ -87,10 +87,13 @@ class GetFindings extends Report
         $view->config->disable_row_evolution = true;
         $view->config->disable_row_actions = false;
         $idSite = Common::getRequestVar('idSite', 0, 'int');
-        $view->config->custom_parameters['fwcs_can_accept'] = $idSite > 0 && Piwik::isUserHasAdminAccess($idSite) ? 1 : 0;
+        $canAccept = $idSite > 0 && Piwik::isUserHasAdminAccess($idSite);
+        $view->config->custom_parameters['fwcs_can_accept'] = $canAccept ? 1 : 0;
+        $acceptLabel = Piwik::translate('FeinwerkCampaignScore_AcceptRowAction');
+        $acceptTitle = Piwik::translate('FeinwerkCampaignScore_AcceptRowActionTooltip');
 
         // readable texts only in the HTML table (as columns there); the API keeps the codes as metadata and the plain label
-        $view->config->filters[] = static function (DataTable $table) {
+        $view->config->filters[] = static function (DataTable $table) use ($canAccept, $acceptLabel, $acceptTitle) {
             $formatter = NumberFormatter::getInstance();
             $formatNumber = static function ($number) use ($formatter): string {
                 return (string) $formatter->formatNumber($number);
@@ -103,6 +106,21 @@ class GetFindings extends Report
                 $row->setColumn('type', FindingTexts::type($type, $translate));
                 $row->setColumn('field', FindingTexts::field((string) $row->getMetadata('field'), $translate));
                 $row->setColumn('suggestion', (string) $row->getMetadata('suggestion'));
+                // no suggestion, but values an admin can accept: a visible button in the suggestion cell (Peter,
+                // 2026-11-24: "D5. ich folge deiner Empfehlung"); Matomo shows a cell's HTML only next to a value
+                $accept = $row->getMetadata('accept');
+                if ($canAccept && (string) $row->getMetadata('suggestion') === '' && is_array($accept) && $accept !== []) {
+                    // campaign values are stored HTML-encoded by Matomo: decoded here, escaped once by acceptButton
+                    $shown = implode(', ', array_map(static function ($value): string {
+                        return html_entity_decode((string) $value, ENT_QUOTES, 'UTF-8');
+                    }, $accept));
+                    $row->setColumn('suggestion', "\u{00A0}");
+                    $row->setMetadata('html_column_suggestion_prefix', self::acceptButton(
+                        $acceptLabel,
+                        $acceptTitle,
+                        Piwik::translate('FeinwerkCampaignScore_AcceptRowActionFor', [$shown])
+                    ));
+                }
                 if ($row->getMetadata('new')) {
                     $row->setMetadata('html_label_prefix', '<span class="fwcs-new" title="'
                         . htmlspecialchars(Piwik::translate('FeinwerkCampaignScore_NewBadgeTitle'), ENT_QUOTES)
@@ -127,6 +145,18 @@ class GetFindings extends Report
             $view->config->show_footer_message = FeedbackBar::forReport(FeedbackBar::TOPIC_REPORT, $view, $idSite)
                 . FooterLink::forReport($view);
         }
+    }
+
+    /**
+     * The button that accepts the values of a finding without a suggestion (javascripts/accept.js handles it like the row
+     * action, with Matomo's confirmation). Texts escaped. Pure.
+     */
+    public static function acceptButton(string $label, string $title, string $name = ''): string
+    {
+        // $name: the button's name for screen readers with the row's value (UI review 2026-11-25 W2)
+        return '<button type="button" class="fwcs-accept-btn" title="' . htmlspecialchars($title, ENT_QUOTES) . '"'
+            . ($name !== '' ? ' aria-label="' . htmlspecialchars($name, ENT_QUOTES) . '"' : '') . '>'
+            . htmlspecialchars($label, ENT_QUOTES) . '</button>';
     }
 
     /**

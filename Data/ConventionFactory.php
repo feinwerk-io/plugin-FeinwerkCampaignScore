@@ -118,6 +118,62 @@ final class ConventionFactory
         return $conventions;
     }
 
+    /**
+     * The rules in force for one website and where each comes from (website setting, setting for all websites, or the
+     * plugin's default), for FeinwerkCampaignScore.getRules. Mirrors build(). Pure.
+     *
+     * @param array<string, mixed> $system the settings for all websites
+     * @param array<string, mixed> $site   the website's settings
+     * @return array<string, mixed>
+     */
+    public static function rulesFrom(array $system, array $site): array
+    {
+        $convention = self::build($system, $site);
+        $sourceOf = static function (string $name) use ($system, $site): string {
+            if (trim((string) ($site[$name] ?? '')) !== '' && !($name === 'separator' && !self::isSeparator((string) $site[$name]))) {
+                return 'website';
+            }
+            $value = trim(str_replace(["\r\n", "\r"], "\n", (string) ($system[$name] ?? '')));
+            // Matomo returns a setting's default when nothing is stored: the default is not a choice for all websites
+            if ($value !== '' && $value !== self::systemDefault($name) && !($name === 'separator' && !self::isSeparator($value))) {
+                return 'all_websites';
+            }
+
+            return 'default';
+        };
+        $separatorNames = [Convention::SEPARATOR_ANY => 'any', Convention::SEPARATOR_HYPHEN => 'hyphen', Convention::SEPARATOR_UNDERSCORE => 'underscore'];
+
+        return [
+            'separator' => ['value' => $separatorNames[$convention->separator] ?? 'any', 'source' => $sourceOf('separator')],
+            'name_pattern' => ['value' => $convention->namePattern, 'source' => $convention->namePattern === null ? 'default' : $sourceOf('namePattern')],
+            'mediums' => ['value' => $convention->mediums->values(), 'source' => $sourceOf('mediums')],
+            'accepted_values' => array_map('strval', array_keys(Convention::acceptedFromText((string) ($site['accepted'] ?? '')))),
+            'source_aliases' => self::flag($system['sourceAliases'] ?? true),
+            'typo_hints' => self::flag($system['typoHints'] ?? true),
+        ];
+    }
+
+    /** @return array<string, mixed> rulesFrom() for one website */
+    public static function rulesForSite(int $idSite): array
+    {
+        $site = new MeasurableSettings($idSite);
+
+        return self::rulesFrom(self::systemValues(), [
+            'mediums' => $site->mediums->getValue(),
+            'accepted' => $site->accepted->getValue(),
+            'separator' => $site->separator->getValue(),
+            'namePattern' => $site->namePattern->getValue(),
+        ]);
+    }
+
+    /** The default of a setting for all websites (SystemSettings), normalised as rulesFrom() compares it. */
+    private static function systemDefault(string $name): string
+    {
+        $defaults = ['mediums' => implode("\n", MediumList::DEFAULTS), 'separator' => Convention::SEPARATOR_ANY, 'namePattern' => ''];
+
+        return $defaults[$name] ?? '';
+    }
+
     /** @return array<string, mixed> */
     private static function systemValues(): array
     {

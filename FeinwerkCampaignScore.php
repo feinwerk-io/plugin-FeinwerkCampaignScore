@@ -35,7 +35,63 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
             'Metrics.getEvolutionUnit' => 'getEvolutionUnit',
             // Campaign Score over time: a gap for periods without campaign visits instead of 0 % (Peter, 2026-11-14)
             'ViewDataTable.filterViewDataTable' => 'useScoreEvolution',
+            // a line with the score and the findings under Matomo's campaign names report (Peter, 2026-11-24: "D4 ja")
+            // (Matomo's own hook for the line under the campaign names report, core and Marketing Campaigns Reporting)
+            'Template.afterCampaignsReport' => 'addCampaignsFooter',
         ];
+    }
+
+    /**
+     * Under Matomo's campaign names report (Ui/CampaignsFooter): the score of the same website, period and segment with
+     * its findings and a link to the Campaign Score report. Matomo calls this only for the report's own table (never for
+     * its subtables); never breaks the report.
+     *
+     * @param string $out the footer HTML so far
+     */
+    public function addCampaignsFooter(&$out)
+    {
+        try {
+            // embedded widgets (Widgetize, disableLink=1) link nowhere into Matomo: no line, and no analysis for it
+            if (\Piwik\Plugins\FeinwerkCampaignScore\Feedback\FeedbackBar::isEmbedded(
+                \Piwik\Piwik::getModule(),
+                Common::getRequestVar('disableLink', 0, 'int')
+            )) {
+                return;
+            }
+            $period = Common::getRequestVar('period', '', 'string');
+            $date = Common::getRequestVar('date', '', 'string');
+            if (!\Piwik\Plugins\FeinwerkCampaignScore\Ui\CampaignsFooter::isFor(
+                Common::getRequestVar('idSubtable', 0, 'int') > 0,
+                \Piwik\Plugins\FeinwerkCampaignScore\Data\PeriodGroups::isSeveral($period, $date)
+            )) {
+                return;
+            }
+            $idSite = Common::getRequestVar('idSite', 0, 'int');
+            $segment = (string) (\Piwik\API\Request::getRawSegmentFromRequest() ?: '');
+            $table = \Piwik\API\Request::processRequest('FeinwerkCampaignScore.getScore', [
+                'idSite' => $idSite,
+                'period' => $period,
+                'date' => $date,
+                'segment' => $segment,
+                'format' => 'original',
+            ], []);
+            $row = $table instanceof \Piwik\DataTable && $table->getRowsCount() === 1 ? $table->getFirstRow()->getColumns() : null;
+            $formatter = \Piwik\NumberFormatter::getInstance();
+            // first, right under the table: other plugins add to the same hook (Matomo's "Did you know?" box)
+            $out = \Piwik\Plugins\FeinwerkCampaignScore\Ui\CampaignsFooter::html(
+                $row,
+                \Piwik\Plugins\FeinwerkCampaignScore\Ui\ScoreWidget::reportUrl($idSite, $period, $date, $segment),
+                [\Piwik\Piwik::class, 'translate'],
+                static function ($percent) use ($formatter): string {
+                    return (string) $formatter->formatPercent($percent, 0);
+                },
+                static function ($number) use ($formatter): string {
+                    return (string) $formatter->formatNumber($number);
+                }
+            ) . $out;
+        } catch (\Throwable $e) {
+            // the campaign report stays as Matomo shows it
+        }
     }
 
     /** @param array<string, string> $visualizations */

@@ -100,7 +100,7 @@ class GetAllSites extends Widget
                 $idSite = (int) $row->getMetadata('idsite');
                 $sites[] = [
                     'name' => (string) $row->getColumn('label'),
-                    'url' => ScoreWidget::reportUrl($idSite, $period, $date),
+                    'url' => ScoreWidget::reportUrl($idSite, $period, $date, $segment),
                     'score' => $score === false ? '' : $formatter->formatPercent((int) round((float) $score), 0),
                     'level' => $score === false ? '' : ((float) $score >= ScoreCard::GOOD_FROM ? 'good' : ((float) $score >= ScoreCard::OK_FROM ? 'ok' : 'poor')),
                     'visits' => $formatter->formatNumber((int) $row->getColumn('campaign_visits')),

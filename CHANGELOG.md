@@ -1,5 +1,24 @@
 # Changelog
 
+## 6.2.0
+
+- Right under Matomo's Campaign Names report a line shows the Campaign Score of the period with its number of findings and a link to them (no link when there are none).
+- Admins accept a value with a visible "Accept value" button in rows without a suggestion; the hover action stays.
+- The 30-day pause of the place beside the score card now comes from the shared notes of all Feinwerk plugins; a place closed with 6.1.0 stays empty for the rest of its 30 days.
+- API error messages show the value given without quotes, so they read plainly in every output format.
+- API: `getRules` shows the rules a website is checked by and whether each comes from the website, the settings for all websites or the default; `removeAcceptedValues` takes accepted values back; `acceptValues` and `removeAcceptedValues` offer `dryRun=1` and report which values changed. A wrong `idSite` or `dryRun` answers with a message that names the parameter.
+- The links of the score card and of the overview of all websites keep the selected segment.
+- The correction list is also a report in Matomo's report list ("Campaign value corrections"), so it can be sent as a scheduled email report and found by API clients.
+- The report help explains that a value shown as "(not set)" is missing in the campaign link, and that there is no score without campaign visits that can be checked.
+- The small score trend in the score card keeps every period in its place; periods without a score show as a faint dotted line.
+- Without campaign visits in a period, the score card links to the last period with campaign visits, or else to the whole month or year, so one click leads to a score.
+- The accept dialog shows the value in quotes, and the keyboard focus returns to the row when it closes.
+- On phones the picture of the guide to Feinwerk Campaigns sits above its text.
+- The score card and the guide keep the same space to the next report as Matomo's own reports, and the overview of all websites lines up with its title.
+- Widgets embedded in other pages no longer show the link "Show all findings".
+- The help of the setting "Usual mediums" matches the pre-filled list: empty the field and save to go back to the default list.
+- The notes and the connector installer work together with the newest copies in other Feinwerk plugins.
+
 ## 6.1.0
 
 - The findings table stays readable on tablets and phones: values and where they occur wrap at word boundaries, and every column starts at the top.

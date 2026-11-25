@@ -94,27 +94,70 @@ final class ScoreCard
     }
 
     /**
-     * The points of the sparkline (SVG polyline) for the scores of the last periods, oldest first, on a fixed scale
-     * from 0 to 100 percent; periods without a score are left out. Null with fewer than two scores.
+     * The sparkline (SVG path data) for the scores of the last periods, oldest first, on a fixed scale from 0 to 100
+     * percent. Every period keeps its place: "line" joins neighbouring scores, "gaps" bridges periods without a score
+     * (drawn faint and dotted), and a score with no neighbour is a dot (a segment of length 0 with round line caps).
+     * Null with fewer than two scores.
      *
      * @param list<float|null> $scores percent
+     * @return array{line: string, gaps: string}|null
      */
-    public static function sparkline(array $scores): ?string
+    public static function sparkline(array $scores): ?array
     {
-        $scores = array_values(array_filter($scores, static function ($score): bool {
-            return $score !== null;
-        }));
+        $scores = array_values($scores);
         $count = count($scores);
-        if ($count < 2) {
-            return null;
-        }
         $points = [];
         foreach ($scores as $i => $score) {
-            $x = $i * self::SPARK_WIDTH / ($count - 1);
-            $y = self::SPARK_HEIGHT - max(0.0, min(100.0, (float) $score)) / 100 * self::SPARK_HEIGHT;
-            $points[] = self::number($x) . ',' . self::number($y);
+            if ($score !== null) {
+                $x = $i * self::SPARK_WIDTH / max(1, $count - 1);
+                $y = self::SPARK_HEIGHT - max(0.0, min(100.0, (float) $score)) / 100 * self::SPARK_HEIGHT;
+                $points[$i] = self::number($x) . ',' . self::number($y);
+            }
         }
-        return implode(' ', $points);
+        if (count($points) < 2) {
+            return null;
+        }
+        $line = '';
+        $gaps = '';
+        $previous = null;
+        foreach ($points as $i => $point) {
+            if ($previous === null || $i - $previous > 1) {
+                if ($previous !== null) {
+                    $gaps .= 'M' . $points[$previous] . 'L' . $point;
+                }
+                $alone = !isset($points[$i + 1]);
+                $line .= 'M' . $point . ($alone ? 'l0,0' : '');
+            } else {
+                $line .= 'L' . $point;
+            }
+            $previous = $i;
+        }
+        return ['line' => $line, 'gaps' => $gaps];
+    }
+
+    /**
+     * The index of the latest period before the selected one (the last entry) that has a score; null when none has.
+     *
+     * @param list<float|null> $scores oldest first, the selected period last
+     */
+    public static function lastScoredBefore(array $scores): ?int
+    {
+        $scores = array_values($scores);
+        for ($i = count($scores) - 2; $i >= 0; $i--) {
+            if ($scores[$i] !== null) {
+                return $i;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The next longer period to look at when the selected one has no campaign visits: the month for a day or a week,
+     * the year for a month. Null for a year, a date range or anything else.
+     */
+    public static function longerPeriod(string $period): ?string
+    {
+        return ['day' => 'month', 'week' => 'month', 'month' => 'year'][$period] ?? null;
     }
 
     private static function number(float $value): string
