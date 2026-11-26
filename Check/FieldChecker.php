@@ -19,7 +19,7 @@ final class FieldChecker
 {
     /** which rules apply to which field; keyword and content hold free text and get the variant check only */
     private const PROFILES = [
-        'name' => ['format' => true, 'separator' => true, 'pattern' => true, 'typos' => true],
+        'name' => ['format' => true, 'separator' => true, 'pattern' => true, 'typos' => true, 'numeric' => true],
         'source' => ['format' => true, 'separator' => true, 'aliases' => true, 'typos' => true],
         'medium' => ['format' => true, 'separator' => true, 'list' => true, 'typos' => true],
         'keyword' => [],
@@ -101,6 +101,11 @@ final class FieldChecker
         }
         if (empty($profile['format'])) {
             return null;
+        }
+
+        // digits only: no spelling makes it a readable name, so this comes before the format (Peter, 2026-11-26)
+        if (!empty($profile['numeric']) && $convention->numericNames && ValueRules::isNumericOnly($value)) {
+            return new Finding(Finding::NUMERIC, $field, $group, $visits, null);
         }
 
         $cleaned = ValueRules::cleaned($value, $convention->separator);

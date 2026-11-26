@@ -30,7 +30,8 @@ final class Convention
         public readonly string $separator = self::SEPARATOR_ANY,
         public readonly ?string $namePattern = null,
         public readonly bool $sourceAliases = true,
-        public readonly bool $typoHints = true
+        public readonly bool $typoHints = true,
+        public readonly bool $numericNames = true
     ) {
     }
 

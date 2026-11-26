@@ -27,7 +27,7 @@ final class ConventionFactory
     public const SEPARATOR_INHERIT = 'inherit';
 
     /**
-     * @param array<string, mixed> $system mediums, separator, namePattern, sourceAliases, typoHints
+     * @param array<string, mixed> $system mediums, separator, namePattern, sourceAliases, typoHints, numericNames
      * @param array<string, mixed> $site mediums, extraMediums (added to the list in force), accepted, separator,
      *                                   namePattern (empty or "inherit": the system's)
      */
@@ -57,7 +57,8 @@ final class ConventionFactory
             $separator,
             $pattern,
             self::flag($system['sourceAliases'] ?? true),
-            self::flag($system['typoHints'] ?? true)
+            self::flag($system['typoHints'] ?? true),
+            self::flag($system['numericNames'] ?? true)
         );
     }
 
@@ -154,6 +155,7 @@ final class ConventionFactory
             'accepted_values' => array_map('strval', array_keys(Convention::acceptedFromText((string) ($site['accepted'] ?? '')))),
             'source_aliases' => self::flag($system['sourceAliases'] ?? true),
             'typo_hints' => self::flag($system['typoHints'] ?? true),
+            'numeric_names' => self::flag($system['numericNames'] ?? true),
         ];
     }
 
@@ -189,6 +191,7 @@ final class ConventionFactory
             'namePattern' => $settings->namePattern->getValue(),
             'sourceAliases' => $settings->sourceAliases->getValue(),
             'typoHints' => $settings->typoHints->getValue(),
+            'numericNames' => $settings->numericNames->getValue(),
         ];
     }
 
