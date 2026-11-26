@@ -11,6 +11,7 @@ namespace Piwik\Plugins\FeinwerkCampaignScore;
 
 use Piwik\Piwik;
 use Piwik\Plugins\FeinwerkCampaignScore\Check\Convention;
+use Piwik\Plugins\FeinwerkCampaignScore\Check\MediumList;
 use Piwik\Plugins\FeinwerkCampaignScore\Data\ConventionFactory;
 use Piwik\Settings\FieldConfig;
 use Piwik\Settings\Setting;
@@ -26,6 +27,9 @@ class MeasurableSettings extends \Piwik\Settings\Measurable\MeasurableSettings
 
     /** @var Setting */
     public $accepted;
+
+    /** @var Setting */
+    public $extraMediums;
 
     /** @var Setting */
     public $separator;
@@ -49,12 +53,27 @@ class MeasurableSettings extends \Piwik\Settings\Measurable\MeasurableSettings
             }
         );
 
+        // mediums that count as usual for this website on top of the list in force (UI review proposal d: "add to the
+        // usual mediums" from a finding, without copying the general list into the website)
+        $this->extraMediums = $this->makeSetting(
+            'extraMediums',
+            '',
+            FieldConfig::TYPE_STRING,
+            static function (FieldConfig $field) {
+                $field->title = Piwik::translate('FeinwerkCampaignScore_SettingExtraMediumsTitle');
+                $field->description = Piwik::translate('FeinwerkCampaignScore_SettingExtraMediumsDescription');
+                $field->uiControl = FieldConfig::UI_CONTROL_TEXTAREA;
+            }
+        );
+
         $this->mediums = $this->makeSetting(
             'mediums',
             '',
             FieldConfig::TYPE_STRING,
             static function (FieldConfig $field) {
-                $field->title = Piwik::translate('FeinwerkCampaignScore_SettingMediumsTitle');
+                // the website's own list replaces the general one; the additional mediums above are the common case
+                // (UI review 2026-11-26 D5)
+                $field->title = Piwik::translate('FeinwerkCampaignScore_SettingSiteMediumsTitle');
                 $field->description = Piwik::translate('FeinwerkCampaignScore_SettingSiteMediumsDescription');
                 $field->uiControl = FieldConfig::UI_CONTROL_TEXTAREA;
             }
@@ -87,6 +106,94 @@ class MeasurableSettings extends \Piwik\Settings\Measurable\MeasurableSettings
                 };
             }
         );
+    }
+
+    /** at most this many additional usual mediums per website */
+    public const MAX_EXTRA_MEDIUMS = 100;
+
+    /**
+     * Adds mediums to the website's additional usual mediums and saves, unless $dryRun or nothing is new.
+     *
+     * @param list<string> $values
+     * @param list<string> $inForce the usual mediums in force for the website (they are reported as already usual)
+     * @return array{additional_mediums: int, added: list<string>, already: list<string>}
+     * @throws \LengthException beyond MAX_EXTRA_MEDIUMS
+     */
+    public function addMediums(array $values, array $inForce, bool $dryRun = false): array
+    {
+        [$text, $added, $already] = self::withMediums((string) $this->extraMediums->getValue(), $inForce, $values);
+        $count = count(MediumList::parse($text));
+        if ($count > self::MAX_EXTRA_MEDIUMS) {
+            throw new \LengthException(Piwik::translate('FeinwerkCampaignScore_ErrorTooManyMediums', [self::MAX_EXTRA_MEDIUMS]));
+        }
+        if (!$dryRun && $added !== []) {
+            $this->extraMediums->setValue($text);
+            $this->save();
+        }
+        return ['additional_mediums' => $count, 'added' => $added, 'already' => $already];
+    }
+
+    /**
+     * Takes mediums out of the website's additional usual mediums and saves, unless $dryRun or nothing was there.
+     *
+     * @param list<string> $values
+     * @return array{additional_mediums: int, removed: list<string>, not_found: list<string>}
+     */
+    public function removeMediums(array $values, bool $dryRun = false): array
+    {
+        [$text, $removed, $notFound] = self::withoutMediums((string) $this->extraMediums->getValue(), $values);
+        if (!$dryRun && $removed !== []) {
+            $this->extraMediums->setValue($text);
+            $this->save();
+        }
+        return ['additional_mediums' => count(MediumList::parse($text)), 'removed' => $removed, 'not_found' => $notFound];
+    }
+
+    /**
+     * The additional mediums with the given ones: [text, added, already usual]. Pure.
+     *
+     * @param list<string> $inForce
+     * @param list<string> $values
+     * @return array{0: string, 1: list<string>, 2: list<string>}
+     */
+    public static function withMediums(string $existing, array $inForce, array $values): array
+    {
+        $extra = array_fill_keys(MediumList::parse($existing), true);
+        $usual = array_fill_keys(array_map('strval', $inForce), true) + $extra;
+        $added = [];
+        $already = [];
+        foreach (MediumList::parse(implode("\n", array_map('strval', $values))) as $medium) {
+            if (isset($usual[$medium])) {
+                $already[] = $medium;
+                continue;
+            }
+            $usual[$medium] = true;
+            $extra[$medium] = true;
+            $added[] = $medium;
+        }
+        return [implode("\n", array_map('strval', array_keys($extra))), $added, $already];
+    }
+
+    /**
+     * The additional mediums without the given ones: [text, removed, not found]. Pure.
+     *
+     * @param list<string> $values
+     * @return array{0: string, 1: list<string>, 2: list<string>}
+     */
+    public static function withoutMediums(string $existing, array $values): array
+    {
+        $extra = array_fill_keys(MediumList::parse($existing), true);
+        $removed = [];
+        $notFound = [];
+        foreach (MediumList::parse(implode("\n", array_map('strval', $values))) as $medium) {
+            if (isset($extra[$medium])) {
+                unset($extra[$medium]);
+                $removed[] = $medium;
+            } else {
+                $notFound[] = $medium;
+            }
+        }
+        return [implode("\n", array_map('strval', array_keys($extra))), $removed, $notFound];
     }
 
     /** at most this many accepted values per website (the setting is one text value in Matomo's database) */

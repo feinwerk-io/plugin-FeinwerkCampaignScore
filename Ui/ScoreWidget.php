@@ -49,16 +49,16 @@ final class ScoreWidget
         $score = self::lastTable(Request::processRequest('FeinwerkCampaignScore.getScore', $params, []));
         $scoreRow = $score ? $score->getFirstRow() : false;
 
+        // the widget lists the top findings; the report page sums the points of all of them per field (UI review
+        // 2026-11-26 D1). Both read the analysis the API keeps for the request, most points first
         $findings = [];
-        if ($asDashboardWidget) {
-            $table = self::lastTable(Request::processRequest(
-                'FeinwerkCampaignScore.getFindings',
-                $params + ['filter_limit' => self::TOP_PROBLEMS],
-                []
-            ));
-            foreach ($table ? $table->getRows() : [] as $row) {
-                $findings[] = $row->getColumns() + (array) $row->getMetadata();
-            }
+        $table = self::lastTable(Request::processRequest(
+            'FeinwerkCampaignScore.getFindings',
+            $params + ['filter_limit' => $asDashboardWidget ? self::TOP_PROBLEMS : -1],
+            []
+        ));
+        foreach ($table ? $table->getRows() : [] as $row) {
+            $findings[] = $row->getColumns() + (array) $row->getMetadata();
         }
 
         $formatter = NumberFormatter::getInstance();
@@ -75,7 +75,11 @@ final class ScoreWidget
             },
             static function ($percent) use ($formatter): string {
                 return (string) $formatter->formatPercent($percent, 0);
-            }
+            },
+            static function ($number) use ($formatter): string {
+                return (string) $formatter->formatNumber($number, 1, 1);
+            },
+            $asDashboardWidget ? self::TOP_PROBLEMS : 0
         );
         // nothing to download without campaign visits
         $downloads = $asDashboardWidget || empty($card['hasData'])
@@ -105,6 +109,14 @@ final class ScoreWidget
         $view->asDashboardWidget = $asDashboardWidget;
         $history = self::history($idSite, $period, $date, $params['segment']);
         $view->sparkline = $history !== null ? ScoreCard::sparkline($history['scores']) : null;
+        // the line's name with its values for screen readers (UI review 2026-11-26 W6)
+        $scored = $history !== null ? array_values(array_filter($history['scores'], static function ($score): bool {
+            return $score !== null;
+        })) : [];
+        $view->sparklineLabel = count($scored) > 1 ? Piwik::translate('FeinwerkCampaignScore_SparklineRange', [
+            $formatter->formatPercent((int) round($scored[0]), 0),
+            $formatter->formatPercent((int) round($scored[count($scored) - 1]), 0),
+        ]) : null;
         $view->sparklineWidth = ScoreCard::SPARK_WIDTH;
         $view->sparklineHeight = ScoreCard::SPARK_HEIGHT;
         // an embedded widget (Widgetize, disableLink=1) links nowhere into Matomo
@@ -133,6 +145,7 @@ final class ScoreWidget
                 }
             }
         }
+        $view->emailReport = !$asDashboardWidget && !$embedded && !empty($card['hasData']) ? self::emailReport($idSite) : null;
         $view->downloads = $downloads;
         $view->feedback = $asDashboardWidget && !$embedded ? FeedbackBar::forPage(FeedbackBar::TOPIC_WIDGET, $idSite) : '';
         // the card for Feinwerk Campaigns in the dashboard widget (house blueprint for dashboard widgets)
@@ -180,6 +193,30 @@ final class ScoreWidget
                 $dates[] = $periodObject instanceof \Piwik\Period ? $periodObject->getDateStart()->toString() : '';
             }
             return ['scores' => $scores, 'dates' => $dates];
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * The link "send by email" of the score card (UI review proposal e): to create the user's Campaign Score email report
+     * (API addEmailReport), or to Matomo's page of email reports when the user has one; null for anonymous users,
+     * without Matomo's email reports and on any error.
+     *
+     * @return array{exists: bool, manageUrl: string}|null
+     */
+    private static function emailReport(int $idSite): ?array
+    {
+        try {
+            if (Piwik::isUserIsAnonymous() || !PluginManager::getInstance()->isPluginActivated('ScheduledReports')) {
+                return null;
+            }
+            $existing = EmailReport::existing(
+                (array) Request::processRequest('ScheduledReports.getReports', ['idSite' => $idSite], []),
+                Piwik::getCurrentUserLogin()
+            );
+
+            return ['exists' => $existing !== null, 'manageUrl' => EmailReport::manageUrl($idSite)];
         } catch (\Throwable $e) {
             return null;
         }

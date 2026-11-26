@@ -51,13 +51,14 @@ final class PromoPlacements
      * exists only for websites with ecommerce, so its condition holds there.
      *
      * @param callable(string): bool $isInstalled
+     * @param string $campaignsStage the campaigns tip's step (PromoLine::campaigns()): none leaves it out
      */
-    public static function messageFor(string $placement, callable $isInstalled): ?string
+    public static function messageFor(string $placement, callable $isInstalled, string $campaignsStage = PromoLine::CAMPAIGNS_PLATFORM): ?string
     {
         if ($placement === 'line') {
             return null; // the tip line is no box: tip-line-only messages (connector) never fill one
         }
-        foreach (PromoLine::candidates($isInstalled, true, PromoLine::demo()) as $id) {
+        foreach (PromoLine::candidates($isInstalled, true, PromoLine::demo(), false, $campaignsStage) as $id) {
             if ((PromoLine::MESSAGES[$id]['placement'] ?? null) === $placement) {
                 return $id;
             }
@@ -126,11 +127,12 @@ final class PromoPlacements
                 return;
             }
             $pages = self::pagesWithWidgets($list->getWidgetConfigs());
+            $campaignsStage = PromoLine::campaigns(Common::getRequestVar('idSite', 0, 'int'))['stage'];
             foreach (self::PAGES as $placement => $page) {
                 if (!isset($pages[$page[0] . '/' . $page[1]])) {
                     continue;
                 }
-                $id = self::messageFor($placement, [PromoLine::class, 'isInstalled']);
+                $id = self::messageFor($placement, [PromoLine::class, 'isInstalled'], $campaignsStage);
                 if ($id === null || !self::claim($placement)) {
                     continue;
                 }
@@ -202,8 +204,12 @@ final class PromoPlacements
             if (!$demo && $product !== null && PromoLine::isInstalled($product)) {
                 return '';
             }
+            $campaigns = $id === PromoLine::CAMPAIGNS_MESSAGE ? PromoLine::campaigns(Common::getRequestVar('idSite', 0, 'int')) : null;
+            if ($campaigns !== null && $campaigns['stage'] === PromoLine::CAMPAIGNS_NONE) {
+                return '';
+            }
 
-            return self::render(PromoLine::variables($id, PromoLine::language(), [Piwik::class, 'translate'], $placement, $demo));
+            return self::render(PromoLine::variables($id, PromoLine::language(), [Piwik::class, 'translate'], $placement, $demo, null, $campaigns));
         } catch (\Throwable $e) {
             return '';
         }

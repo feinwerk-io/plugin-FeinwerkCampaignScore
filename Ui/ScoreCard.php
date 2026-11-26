@@ -30,6 +30,8 @@ final class ScoreCard
      * @param callable(string, mixed...): string $translate
      * @param callable(int|float): string $formatNumber
      * @param callable(int|float): string $formatPercent
+     * @param callable(int|float): string|null $formatOneDecimal points with one decimal (default: plain number_format)
+     * @param int $topProblems how many findings the widget lists (0: the report page, which lists none)
      * @return array<string, mixed>
      */
     public static function variables(
@@ -38,8 +40,13 @@ final class ScoreCard
         bool $mcrActivated,
         callable $translate,
         callable $formatNumber,
-        callable $formatPercent
+        callable $formatPercent,
+        ?callable $formatOneDecimal = null,
+        int $topProblems = 3
     ): array {
+        $formatOneDecimal = $formatOneDecimal ?? static function ($number): string {
+            return number_format((float) $number, 1);
+        };
         $withSourceMedium = !empty($score['with_source_medium']);
         $unchecked = (int) ($score['unchecked_visits'] ?? 0);
         $hasData = isset($score['score']);
@@ -49,9 +56,14 @@ final class ScoreCard
         $value = $hasData ? (float) $score['score'] : 0.0;
 
         $problems = [];
-        foreach ($findings as $finding) {
+        $topPoints = 0.0;
+        foreach (array_slice($findings, 0, $topProblems) as $finding) {
             $type = (string) ($finding['type'] ?? '');
+            $gain = (float) ($finding['score_gain'] ?? 0);
+            $topPoints += $gain;
             $problems[] = [
+                // the widget shows the points it is sorted by (UI review 2026-11-26 D3)
+                'points' => $gain > 0 ? '+' . $formatOneDecimal($gain) : '',
                 'problem' => FindingTexts::type($type, $translate),
                 'field' => FindingTexts::field((string) ($finding['field'] ?? ''), $translate),
                 'value' => FindingTexts::value($type, (string) ($finding['label'] ?? ''), (array) ($finding['values'] ?? []), $translate, $formatNumber),
@@ -71,8 +83,50 @@ final class ScoreCard
                 : $translate('FeinwerkCampaignScore_DeltaChange', ($points > 0 ? '+' : '-') . abs($points));
         }
 
+        $level = $value >= self::GOOD_FROM ? 'good' : ($value >= self::OK_FROM ? 'ok' : 'poor');
+        // where the missing points are: the points of all findings per field, in the unit of the Points column (UI review
+        // 2026-11-26 D1); only with source and medium, where there is more than the campaign name
+        $lost = [];
+        foreach ($findings as $finding) {
+            $gain = (float) ($finding['score_gain'] ?? 0);
+            if ($gain <= 0) {
+                continue;
+            }
+            $field = (string) ($finding['field'] ?? '');
+            $lost[$field] = [
+                'points' => ($lost[$field]['points'] ?? 0.0) + $gain,
+                'count' => ($lost[$field]['count'] ?? 0) + 1,
+            ];
+        }
+        uasort($lost, static function (array $a, array $b): int {
+            return $b['points'] <=> $a['points'];
+        });
+        $largest = $lost === [] ? 0.0 : max(array_column($lost, 'points'));
+        $lostPoints = [];
+        foreach ($lost as $field => $entry) {
+            $lostPoints[] = [
+                'field' => FindingTexts::field((string) $field, $translate),
+                'points' => $formatOneDecimal($entry['points']),
+                'width' => $largest > 0 ? max(4, (int) round($entry['points'] / $largest * 100)) : 0,
+                'findings' => $entry['count'] === 1
+                    ? $translate('FeinwerkCampaignScore_FindingsCountOne')
+                    : $translate('FeinwerkCampaignScore_FindingsCountMany', $formatNumber($entry['count'])),
+            ];
+        }
+        $fixed = (int) ($score['fixed_findings'] ?? 0);
+
         return [
             'hasData' => $hasData,
+            // the verdict as a word, so the level does not hang on colour alone (UI review proposal i)
+            'verdict' => $hasData ? $translate('FeinwerkCampaignScore_Verdict' . ucfirst($level)) : '',
+            'lostPoints' => $hasData && $withSourceMedium && $lostPoints !== [] ? $lostPoints : [],
+            'lostTitle' => $hasData ? $translate('FeinwerkCampaignScore_LostPointsTitle', $formatNumber(max(0, 100 - (int) round($value)))) : '',
+            'topPoints' => $topPoints > 0 && count($problems) > 0
+                ? $translate('FeinwerkCampaignScore_TopFindingsPoints', $formatNumber(count($problems)), $formatOneDecimal($topPoints))
+                : null,
+            'fixed' => $hasData && $fixed > 0
+                ? ($fixed === 1 ? $translate('FeinwerkCampaignScore_FixedOne') : $translate('FeinwerkCampaignScore_FixedMany', $formatNumber($fixed)))
+                : null,
             'delta' => $delta,
             'deltaDirection' => $deltaDirection,
             'noData' => $translate($campaignVisits > 0 ? 'FeinwerkCampaignScore_ScoreNoneChecked' : 'FeinwerkCampaignScore_ScoreNoData'),
@@ -80,7 +134,7 @@ final class ScoreCard
                 ? $translate('FeinwerkCampaignScore_ScoreUnchecked', $formatNumber($unchecked > 0 ? $unchecked : $campaignVisits))
                 : $translate('FeinwerkCampaignScore_ScoreNoDataHint'),
             'score' => $hasData ? $formatPercent((int) round($value)) : '',
-            'level' => $value >= self::GOOD_FROM ? 'good' : ($value >= self::OK_FROM ? 'ok' : 'poor'),
+            'level' => $level,
             'basis' => $translate(
                 'FeinwerkCampaignScore_ScoreBasis',
                 $formatNumber((int) ($score['clean_visits'] ?? 0)),
@@ -100,7 +154,8 @@ final class ScoreCard
      * Null with fewer than two scores.
      *
      * @param list<float|null> $scores percent
-     * @return array{line: string, gaps: string}|null
+     * @return array{line: string, gaps: string, dots: list<array{x: string, y: string}>}|null dots: every score, the
+     *         last one (the selected period) last
      */
     public static function sparkline(array $scores): ?array
     {
@@ -132,7 +187,12 @@ final class ScoreCard
             }
             $previous = $i;
         }
-        return ['line' => $line, 'gaps' => $gaps];
+        $dots = [];
+        foreach ($points as $point) {
+            [$x, $y] = explode(',', $point);
+            $dots[] = ['x' => $x, 'y' => $y];
+        }
+        return ['line' => $line, 'gaps' => $gaps, 'dots' => $dots];
     }
 
     /**

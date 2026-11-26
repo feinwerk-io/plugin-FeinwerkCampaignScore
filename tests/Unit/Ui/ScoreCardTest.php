@@ -81,10 +81,14 @@ class ScoreCardTest extends TestCase
 
     public function test_sparkline_pointsOnAFixedScaleFrom0To100(): void
     {
-        $this->assertSame(['line' => 'M0,28L60,14L120,0', 'gaps' => ''], ScoreCard::sparkline([0.0, 50.0, 100.0]));
-        $this->assertSame(['line' => 'M60,14L120,0', 'gaps' => ''], ScoreCard::sparkline([null, 50.0, 100.0]), 'a period without a score keeps its place');
-        $this->assertSame(['line' => 'M0,0l0,0M80,14L120,28', 'gaps' => 'M0,0L80,14'], ScoreCard::sparkline([100.0, null, 50.0, 0.0]), 'a gap bridged, a single score as a dot');
-        $this->assertSame(['line' => 'M0,28L40,14M120,0l0,0', 'gaps' => 'M40,14L120,0'], ScoreCard::sparkline([0.0, 50.0, null, 100.0]));
+        $this->assertSame(['line' => 'M0,28L60,14L120,0', 'gaps' => '', 'dots' => [['x' => '0', 'y' => '28'], ['x' => '60', 'y' => '14'], ['x' => '120', 'y' => '0']]],
+            ScoreCard::sparkline([0.0, 50.0, 100.0]));
+        $lineAndGaps = static function (?array $spark): ?array {
+            return $spark === null ? null : ['line' => $spark['line'], 'gaps' => $spark['gaps']];
+        };
+        $this->assertSame(['line' => 'M60,14L120,0', 'gaps' => ''], $lineAndGaps(ScoreCard::sparkline([null, 50.0, 100.0])), 'a period without a score keeps its place');
+        $this->assertSame(['line' => 'M0,0l0,0M80,14L120,28', 'gaps' => 'M0,0L80,14'], $lineAndGaps(ScoreCard::sparkline([100.0, null, 50.0, 0.0])), 'a gap bridged, a single score as a dot');
+        $this->assertSame(['line' => 'M0,28L40,14M120,0l0,0', 'gaps' => 'M40,14L120,0'], $lineAndGaps(ScoreCard::sparkline([0.0, 50.0, null, 100.0])));
         $this->assertNull(ScoreCard::sparkline([null, 80.0, null]), 'one score is no line');
         $this->assertNull(ScoreCard::sparkline([80.0]));
         $this->assertNull(ScoreCard::sparkline([]));
@@ -105,6 +109,50 @@ class ScoreCardTest extends TestCase
         $this->assertSame('year', ScoreCard::longerPeriod('month'));
         $this->assertNull(ScoreCard::longerPeriod('year'));
         $this->assertNull(ScoreCard::longerPeriod('range'));
+    }
+
+    public function test_verdict_names_the_level_in_words(): void
+    {
+        $this->assertSame('[FeinwerkCampaignScore_VerdictOk]', self::card(self::score())['verdict']);
+        $this->assertSame('[FeinwerkCampaignScore_VerdictGood]', self::card(self::score(['score' => 95.0]))['verdict']);
+        $this->assertSame('[FeinwerkCampaignScore_VerdictPoor]', self::card(self::score(['score' => 40.0]))['verdict']);
+        $this->assertSame('', self::card(['campaign_visits' => 0])['verdict'], 'no score, no verdict');
+    }
+
+    public function test_the_missing_points_per_field_in_the_unit_of_the_points_column(): void
+    {
+        $findings = [
+            ['field' => 'medium', 'score_gain' => 4.2], ['field' => 'name', 'score_gain' => 5.0],
+            ['field' => 'medium', 'score_gain' => 1.5], ['field' => 'source', 'score_gain' => 1.5],
+            ['field' => 'keyword', 'score_gain' => 0.0],
+        ];
+        $card = self::card(self::score(['score' => 87.8]), $findings);
+
+        $this->assertSame('[FeinwerkCampaignScore_LostPointsTitle:n12]', $card['lostTitle']);
+        $this->assertSame([
+            ['field' => '[FeinwerkCampaignScore_FieldMedium]', 'points' => '5.7', 'width' => 100, 'findings' => '[FeinwerkCampaignScore_FindingsCountMany:n2]'],
+            ['field' => '[FeinwerkCampaignScore_FieldName]', 'points' => '5.0', 'width' => 88, 'findings' => '[FeinwerkCampaignScore_FindingsCountOne]'],
+            ['field' => '[FeinwerkCampaignScore_FieldSource]', 'points' => '1.5', 'width' => 26, 'findings' => '[FeinwerkCampaignScore_FindingsCountOne]'],
+        ], $card['lostPoints']);
+        // only the campaign name is checked: the score says it all
+        $this->assertSame([], self::card(self::score(['with_source_medium' => 0]), $findings)['lostPoints']);
+    }
+
+    public function test_the_widget_names_what_its_top_findings_are_worth(): void
+    {
+        $findings = [['field' => 'name', 'score_gain' => 2.6, 'type' => 'variants'], ['field' => 'medium', 'score_gain' => 1.8, 'type' => 'format'],
+            ['field' => 'medium', 'score_gain' => 1.5, 'type' => 'format'], ['field' => 'name', 'score_gain' => 9.0, 'type' => 'format']];
+        $card = self::card(self::score(), $findings);
+        $this->assertSame(['+2.6', '+1.8', '+1.5'], array_column($card['problems'], 'points'));
+        $this->assertSame('[FeinwerkCampaignScore_TopFindingsPoints:n3|5.9]', $card['topPoints']);
+    }
+
+    public function test_fixed_findings_are_named_once_there_are_any(): void
+    {
+        $this->assertSame('[FeinwerkCampaignScore_FixedMany:n3]', self::card(self::score(['fixed_findings' => 3]))['fixed']);
+        $this->assertSame('[FeinwerkCampaignScore_FixedOne]', self::card(self::score(['fixed_findings' => 1]))['fixed']);
+        $this->assertNull(self::card(self::score(['fixed_findings' => 0]))['fixed']);
+        $this->assertNull(self::card(self::score())['fixed'], 'no previous period');
     }
 
     public function test_level_followsTheScore(): void
@@ -160,8 +208,8 @@ class ScoreCardTest extends TestCase
 
         // with the suggestion where there is one (design D2 of the UI review 2026-11-24)
         $this->assertSame([
-            ['problem' => '[FeinwerkCampaignScore_TypeVariants]', 'field' => '[FeinwerkCampaignScore_FieldName]', 'value' => 'Newsletter (n30), newsletter (n20)', 'visits' => 'n50', 'suggestion' => 'newsletter'],
-            ['problem' => '[FeinwerkCampaignScore_TypeIncomplete]', 'field' => '[FeinwerkCampaignScore_FieldMedium]', 'value' => '[FeinwerkCampaignScore_EmptyValue]', 'visits' => 'n7', 'suggestion' => ''],
+            ['points' => '', 'problem' => '[FeinwerkCampaignScore_TypeVariants]', 'field' => '[FeinwerkCampaignScore_FieldName]', 'value' => 'Newsletter (n30), newsletter (n20)', 'visits' => 'n50', 'suggestion' => 'newsletter'],
+            ['points' => '', 'problem' => '[FeinwerkCampaignScore_TypeIncomplete]', 'field' => '[FeinwerkCampaignScore_FieldMedium]', 'value' => '[FeinwerkCampaignScore_EmptyValue]', 'visits' => 'n7', 'suggestion' => ''],
         ], $card['problems']);
     }
 }

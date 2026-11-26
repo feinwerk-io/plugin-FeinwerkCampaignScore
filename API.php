@@ -21,7 +21,9 @@ use Piwik\Plugin\Manager as PluginManager;
 use Piwik\Plugins\FeinwerkCampaignScore\Check\Analyzer;
 use Piwik\Plugins\FeinwerkCampaignScore\Check\CampaignData;
 use Piwik\Plugins\FeinwerkCampaignScore\Check\Convention;
+use Piwik\Plugins\FeinwerkCampaignScore\Check\Finding;
 use Piwik\Plugins\FeinwerkCampaignScore\Check\Result;
+use Piwik\Plugins\FeinwerkCampaignScore\Check\ValueRules;
 use Piwik\Plugins\FeinwerkCampaignScore\Data\AllSites;
 use Piwik\Plugins\FeinwerkCampaignScore\Data\CampaignReader;
 use Piwik\Plugins\FeinwerkCampaignScore\Data\ConventionExport;
@@ -29,6 +31,7 @@ use Piwik\Plugins\FeinwerkCampaignScore\Data\ConventionFactory;
 use Piwik\Plugins\FeinwerkCampaignScore\Data\PeriodGroups;
 use Piwik\Plugins\FeinwerkCampaignScore\Data\PreviousPeriod;
 use Piwik\Plugins\FeinwerkCampaignScore\Data\ResultTables;
+use Piwik\Plugins\FeinwerkCampaignScore\Ui\EmailReport;
 use Piwik\Plugins\FeinwerkCampaignScore\Feedback\FeedbackVotes;
 use Piwik\Plugins\FeinwerkCampaignScore\Feedback\PluginFeedback;
 use Piwik\Site;
@@ -56,8 +59,11 @@ class API extends \Piwik\Plugin\API
      * Columns: score (percent 0 to 100, one decimal; missing when the period has no checkable campaign visits),
      * previous_score (the period before, for a single period), clean_visits, checked_visits, campaign_visits,
      * unchecked_visits (visits in rows grouped as "Others", masked values, visits Marketing Campaigns Reporting has no
-     * values for), with_source_medium (1 when source and medium are checked, that is with Marketing Campaigns Reporting)
-     * and findings (the number of findings; for several periods not computed).
+     * values for), with_source_medium (1 when source and medium are checked, that is with Marketing Campaigns Reporting),
+     * score_name, score_source and score_medium (the share of each field's visits with a clean value, percent 0 to 100;
+     * source and medium only with Marketing Campaigns Reporting; missing without visits), findings (the number of
+     * findings; for several periods not computed) and fixed_findings (findings of the previous period that are fixed
+     * now: the clean spelling is in use, or a missing value is filled; single period with a previous period only).
      *
      * @param int $idSite the website to check: one website ID (view access needed)
      * @param string $period day, week, month, year or range
@@ -79,11 +85,14 @@ class API extends \Piwik\Plugin\API
     }
 
     /**
-     * Returns what keeps campaign values from being clean, most visits first, each with a suggestion. Use it to find out
-     * which campaign values to fix and how.
+     * Returns what keeps campaign values from being clean, the most score points first (score_gain), each with a
+     * suggestion. Use it to find out which campaign values to fix first and how.
      *
      * Columns: label (the value, or the spelling variants with their visits separated by ", "; empty for a missing
-     * value) and nb_visits (visits with the value). Row metadata: type (variants, alias, format, unusual_medium,
+     * value), nb_visits (visits with the value) and score_gain (score points 0 to 100, one decimal, the finding
+     * accounts for: its share of the visits that are not clean, a visit with two problems counting half for each, so
+     * the score_gain of all findings adds up to 100 minus the score; 0 for typo hints and for keyword, content, group
+     * and placement, which are not scored). Fix the findings with the highest score_gain first. Row metadata: type (variants, alias, format, unusual_medium,
      * separator, pattern, incomplete, similar), field (name, keyword, source, medium, content, group, placement),
      * suggestion (the clean value, empty where none can be given), values (value => visits), contexts (campaign name,
      * source and medium where the values occur), new (1: not in the previous period), accept (the values an admin can
@@ -94,11 +103,31 @@ class API extends \Piwik\Plugin\API
      * @param string $date YYYY-MM-DD, today or yesterday; for period=range a range YYYY-MM-DD,YYYY-MM-DD or lastN/previousN;
      *                     for several periods of the same kind lastN or previousN (then one result per period)
      * @param string|false $segment a Matomo segment definition (URL-encoded) to check only those visits; default false: all visits
+     * @param string $findingType only findings of these types, separated by commas: variants, alias, format,
+     *                            unusual_medium, separator, pattern, incomplete, similar; default '': all findings.
+     *                            Another value answers with HTTP 400
      * @return DataTable|DataTable\Map one table for a single period; a Map keyed by period for several periods
      */
-    public function getFindings($idSite, $period, $date, $segment = false)
+    public function getFindings($idSite, $period, $date, $segment = false, $findingType = '')
     {
-        return ResultTables::output($this->analyze($idSite, $period, $date, $segment), [ResultTables::class, 'findings']);
+        // access first, then the parameters (house rule); analyze() checks the website again
+        Piwik::checkUserHasViewAccess($this->oneSite($idSite));
+        $types = self::findingTypes($findingType);
+        $build = static function (Result $result) use ($types): DataTable {
+            $table = ResultTables::findings($result);
+            if ($types !== []) {
+                $table->filter(static function (DataTable $table) use ($types): void {
+                    foreach ($table->getRows() as $id => $row) {
+                        if (!in_array((string) $row->getMetadata('type'), $types, true)) {
+                            $table->deleteRow($id);
+                        }
+                    }
+                });
+            }
+            return $table;
+        };
+
+        return ResultTables::output($this->analyze($idSite, $period, $date, $segment), $build);
     }
 
     /**
@@ -176,10 +205,16 @@ class API extends \Piwik\Plugin\API
      * @param string $period day, week, month or year (no range)
      * @param string $date YYYY-MM-DD, today or yesterday: one period only
      * @param string|false $segment a Matomo segment definition (URL-encoded) to check only those visits; default false: all visits
+     * @param int|bool|string $withPreviousPeriod 1 or true: also read the period before and add previous_score and
+     *                                            score_change (this reads every website twice and takes about twice as
+     *                                            long); 0 or false: not; default 0. Any other value answers with HTTP
+     *                                            400. (Not "compare": Matomo uses that name for its own comparisons.)
      * @return DataTable one row per website: label (website name), score (percent, missing without checkable campaign
-     *                   visits), campaign_visits, checked_visits, findings; row metadata idsite
+     *                   visits), campaign_visits, checked_visits, findings; with withPreviousPeriod also previous_score (percent)
+     *                   and score_change (points, one decimal; both missing where a period has no score); row metadata
+     *                   idsite
      */
-    public function getScoresForAllSites($period, $date, $segment = false)
+    public function getScoresForAllSites($period, $date, $segment = false, $withPreviousPeriod = 0)
     {
         Piwik::checkUserHasSomeViewAccess();
         $period = (string) $period;
@@ -191,6 +226,10 @@ class API extends \Piwik\Plugin\API
                 : ApiErrors::onePeriod($date, [Piwik::class, 'translate'], false));
         }
         $segment = $segment === false || $segment === null ? '' : (string) $segment;
+        $compare = ApiErrors::flag($withPreviousPeriod);
+        if ($compare === null) {
+            throw new InvalidInputException(ApiErrors::badValue('withPreviousPeriod', $withPreviousPeriod, ApiErrors::FLAG_VALUES, [Piwik::class, 'translate']));
+        }
 
         $names = [];
         foreach ((array) Request::processRequest('SitesManager.getSitesWithAtLeastViewAccess', [], []) as $site) {
@@ -214,12 +253,32 @@ class API extends \Piwik\Plugin\API
             $date,
             $segment,
             gmdate('Y-m-d'),
-            md5(serialize($conventions))
+            md5(serialize([$conventions, $compare]))
         );
         $rows = $cache->fetch($key);
         if (!is_array($rows)) {
-            $rows = $this->scoreRows($idSites, $conventions, $period, $date, $segment);
-            $cache->save($key, $rows, AllSites::CACHE_SECONDS);
+            // the plain table (also the first part of the compared one, so a compare after the first load reads only
+            // the period before)
+            $plainKey = AllSites::cacheKey(
+                Piwik::getCurrentUserLogin(),
+                $idSites,
+                $period,
+                $date,
+                $segment,
+                gmdate('Y-m-d'),
+                md5(serialize([$conventions, false]))
+            );
+            $rows = $compare ? $cache->fetch($plainKey) : false;
+            if (!is_array($rows)) {
+                $rows = $this->scoreRows($idSites, $conventions, $period, $date, $segment);
+                $cache->save($plainKey, $rows, AllSites::CACHE_SECONDS);
+            }
+            // the trend per website (Peter, 2026-11-25 "alle", proposal 4): the period before, read the same way
+            $previous = $compare ? PreviousPeriod::of($period, $date, 'UTC') : null;
+            if ($previous !== null) {
+                $rows = AllSites::withPrevious($rows, $this->scoreRows($idSites, $conventions, $previous['period'], $previous['date'], $segment));
+                $cache->save($key, $rows, AllSites::CACHE_SECONDS);
+            }
         }
 
         $table = new DataTable();
@@ -376,6 +435,134 @@ class API extends \Piwik\Plugin\API
     }
 
     /**
+     * Adds mediums to the usual mediums of one website, on top of the list in force (the website's own list or the list
+     * for all websites): campaign visits with these mediums no longer count as "unusual medium". Use it when a medium
+     * that Campaign Score reports as unusual is right for this website; take one back with removeUsualMediums.
+     *
+     * Admins of the website only; POST only. Stored in the website setting "Additional usual mediums" (at most 100);
+     * bad input answers with HTTP 400.
+     *
+     * @param int $idSite the website: one website ID (admin access needed)
+     * @param string|string[] $values the mediums: one, several separated by line breaks or commas, or an array; stored
+     *                                in the clean spelling the check compares (Facebook Ads becomes facebook-ads, with
+     *                                the website's separator)
+     * @param int|bool|string $dryRun 1 or true: only report what would change, save nothing; 0 or false: save; default 0.
+     *                              Any other value answers with HTTP 400
+     * @return array{additional_mediums: int, added: list<string>, already: list<string>, dry_run: bool}
+     *         additional_mediums: the number of the website's additional mediums afterwards; added: the mediums that are
+     *         new; already: mediums that were usual before (in the list in force); dry_run: whether nothing was saved
+     */
+    public function addUsualMediums($idSite, $values, $dryRun = 0)
+    {
+        $idSite = $this->oneSite($idSite);
+        Piwik::checkUserHasAdminAccess($idSite);
+        if (!PluginFeedback::isAllowedMethod((string) ($_SERVER['REQUEST_METHOD'] ?? ''))) {
+            throw new InvalidInputException('FeinwerkCampaignScore.addUsualMediums only accepts POST requests.');
+        }
+        $list = self::mediumList($values);
+        if ($list === []) {
+            throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorNoValue'));
+        }
+        $dryRun = self::dryRun($dryRun);
+        $convention = ConventionFactory::forSite($idSite);
+
+        $this->analyses = [];
+        try {
+            return (new MeasurableSettings($idSite))->addMediums(
+                self::cleanMediums($list, $convention->separator),
+                $convention->mediums->values(),
+                $dryRun
+            ) + ['dry_run' => $dryRun];
+        } catch (\LengthException $e) {
+            throw new InvalidInputException($e->getMessage());
+        }
+    }
+
+    /**
+     * Takes mediums back out of the additional usual mediums of one website (those added with addUsualMediums or in the
+     * website setting "Additional usual mediums"). The website's own list and the list for all websites stay as they are.
+     *
+     * Admins of the website only; POST only. Mediums that are not additional ones are reported, not refused; bad input
+     * (no value) answers with HTTP 400.
+     *
+     * @param int $idSite the website: one website ID (admin access needed)
+     * @param string|string[] $values the mediums to take back: one, several separated by line breaks or commas, or an
+     *                                array (as getRules lists them in additional_mediums); compared in the clean
+     *                                spelling, so "Facebook Ads" takes back facebook-ads
+     * @param int|bool|string $dryRun 1 or true: only report what would change, save nothing; 0 or false: save; default 0.
+     *                              Any other value answers with HTTP 400
+     * @return array{additional_mediums: int, removed: list<string>, not_found: list<string>, dry_run: bool}
+     *         additional_mediums: the number afterwards; removed: the mediums taken back; not_found: mediums that were
+     *         no additional ones; dry_run: whether nothing was saved
+     */
+    public function removeUsualMediums($idSite, $values, $dryRun = 0)
+    {
+        $idSite = $this->oneSite($idSite);
+        Piwik::checkUserHasAdminAccess($idSite);
+        if (!PluginFeedback::isAllowedMethod((string) ($_SERVER['REQUEST_METHOD'] ?? ''))) {
+            throw new InvalidInputException('FeinwerkCampaignScore.removeUsualMediums only accepts POST requests.');
+        }
+        $list = self::mediumList($values);
+        if ($list === []) {
+            throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorNoValue'));
+        }
+        $dryRun = self::dryRun($dryRun);
+
+        $this->analyses = [];
+
+        // the same clean spelling as addUsualMediums stored: "Facebook Ads" finds facebook-ads
+        return (new MeasurableSettings($idSite))->removeMediums(
+            self::cleanMediums($list, ConventionFactory::forSite($idSite)->separator),
+            $dryRun
+        ) + ['dry_run' => $dryRun];
+    }
+
+    /**
+     * Sends the Campaign Score of one website to the current user by email, every day, week or month: creates a Matomo
+     * email report with the score (getScore) and the findings (getFindings). Use it when someone wants to follow the
+     * score without opening Matomo. When the user already has such a report for the website, nothing new is created.
+     *
+     * Logged-in users with view access; POST only; needs Matomo's plugin "Email reports" (ScheduledReports). Change
+     * or delete the report on Matomo's page of email reports (ScheduledReports.updateReport, deleteReport).
+     *
+     * @param int $idSite the website: one website ID (view access needed)
+     * @param string $period how often: day, week or month; default week (sent every Monday for the week before)
+     * @return array{idreport: int, created: bool, url: string} idreport: the email report's ID; created: false when the
+     *         user had one already; url: Matomo's page of email reports, relative to Matomo's address
+     */
+    public function addEmailReport($idSite, $period = 'week')
+    {
+        $idSite = $this->oneSite($idSite);
+        Piwik::checkUserIsNotAnonymous();
+        Piwik::checkUserHasViewAccess($idSite);
+        if (!PluginFeedback::isAllowedMethod((string) ($_SERVER['REQUEST_METHOD'] ?? ''))) {
+            throw new InvalidInputException('FeinwerkCampaignScore.addEmailReport only accepts POST requests.');
+        }
+        $period = (string) $period;
+        if (!in_array($period, EmailReport::PERIODS, true)) {
+            throw new InvalidInputException(ApiErrors::badValue('period', $period, implode(', ', EmailReport::PERIODS), [Piwik::class, 'translate']));
+        }
+        if (!PluginManager::getInstance()->isPluginActivated('ScheduledReports')) {
+            throw new InvalidInputException(Piwik::translate('FeinwerkCampaignScore_ErrorNoEmailReports'));
+        }
+
+        $existing = EmailReport::existing(
+            (array) Request::processRequest('ScheduledReports.getReports', ['idSite' => $idSite], []),
+            Piwik::getCurrentUserLogin()
+        );
+        if ($existing !== null) {
+            return ['idreport' => (int) $existing['idreport'], 'created' => false, 'url' => EmailReport::manageUrl($idSite)];
+        }
+        $idReport = Request::processRequest('ScheduledReports.addReport', EmailReport::addReportParameters(
+            $idSite,
+            $period,
+            Piwik::translate('FeinwerkCampaignScore_EmailReportDescription')
+        ), []);
+
+        return ['idreport' => (int) $idReport, 'created' => true, 'url' => EmailReport::manageUrl($idSite)];
+    }
+
+    /**
      * Returns the rules Campaign Score checks one website by, and where each rule comes from. Use it before changing a
      * rule, or to explain a finding (for example why a medium counts as unusual).
      *
@@ -385,8 +572,10 @@ class API extends \Piwik\Plugin\API
      *
      * @param int $idSite the website: one website ID (view access needed)
      * @return array<string, mixed> separator {value: any, hyphen or underscore; source}, name_pattern {value: a regular
-     *         expression without delimiters, or null; source}, mediums {value: the usual mediums, lowercase; source},
-     *         accepted_values (list, website only), source_aliases and typo_hints (true or false, all websites).
+     *         expression without delimiters, or null; source}, mediums {value: the usual mediums in force, lowercase, the
+     *         additional ones included; source: of the base list}, additional_mediums (list, website only, see
+     *         addUsualMediums), accepted_values (list, website only), source_aliases and typo_hints (true or false, all
+     *         websites).
      *         source is website, all_websites or default
      */
     public function getRules($idSite)
@@ -425,6 +614,65 @@ class API extends \Piwik\Plugin\API
         }
 
         return $flag;
+    }
+
+    /**
+     * The mediums of a request: like valueList(), and each item also split at commas (the docblocks promise both).
+     *
+     * @param mixed $values
+     * @return list<string>
+     */
+    private static function mediumList($values): array
+    {
+        $list = [];
+        foreach (self::valueList($values) as $value) {
+            foreach (explode(',', $value) as $part) {
+                $part = trim($part);
+                if ($part !== '') {
+                    $list[] = $part;
+                }
+            }
+        }
+        return $list;
+    }
+
+    /**
+     * Mediums in the clean spelling the check compares (FieldChecker: lowercase, words joined by the separator).
+     *
+     * @param list<string> $values
+     * @return list<string>
+     */
+    private static function cleanMediums(array $values, string $separator): array
+    {
+        $clean = [];
+        foreach ($values as $value) {
+            $cleaned = ValueRules::cleaned((string) $value, $separator);
+            $clean[] = $cleaned !== '' ? $cleaned : (string) $value;
+        }
+        return $clean;
+    }
+
+    /**
+     * The findingType parameter: finding types separated by commas (Finding::TYPES), '' for all; else HTTP 400 naming
+     * findingType and the allowed values.
+     *
+     * @param mixed $findingType
+     * @param callable|null $translate like Piwik::translate (test seam; default Piwik::translate)
+     * @return list<string>
+     */
+    private static function findingTypes($findingType, ?callable $translate = null): array
+    {
+        $translate = $translate ?? [Piwik::class, 'translate'];
+        if (!is_scalar($findingType) && $findingType !== null) {
+            throw new InvalidInputException(ApiErrors::badValue('findingType', '', implode(', ', Finding::TYPES), $translate));
+        }
+        $types = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $findingType)), 'strlen')));
+        foreach ($types as $type) {
+            if (!in_array($type, Finding::TYPES, true)) {
+                throw new InvalidInputException(ApiErrors::badValue('findingType', $type, implode(', ', Finding::TYPES), $translate));
+            }
+        }
+        return $types;
     }
 
     /**

@@ -16,8 +16,10 @@
         return;
     }
 
-    $(document).on('click', '.fwcs-allsites__load', function () {
+    // the table on a click (many websites), and the trend per website on a second click (fwcs_compare)
+    $(document).on('click', '.fwcs-allsites__load, .fwcs-allsites__compare', function () {
         var $button = $(this);
+        var compare = $button.hasClass('fwcs-allsites__compare');
         var $box = $button.closest('.fwcs-allsites');
         var $status = $box.find('.fwcs-allsites__status');
 
@@ -35,6 +37,9 @@
                 return;
             }
             $box.replaceWith($table);
+            // the keyboard focus moves to the new table instead of the start of the page (UI review 2026-11-26 F5)
+            $table.attr('tabindex', '-1');
+            $table.trigger('focus');
         }
 
         $button.prop('disabled', true);
@@ -44,7 +49,11 @@
         // or framed page, the token (there is no session there)
         if (typeof window.ajaxHelper === 'function') {
             var request = new window.ajaxHelper();
-            request.addParams({module: 'FeinwerkCampaignScore', action: 'getAllSites', fwcs_load: 1}, 'get');
+            var params = {module: 'FeinwerkCampaignScore', action: 'getAllSites', fwcs_load: 1};
+            if (compare) {
+                params.fwcs_compare = 1;
+            }
+            request.addParams(params, 'get');
             request.setFormat('html');
             request.setCallback(show);
             request.setErrorCallback(fail);

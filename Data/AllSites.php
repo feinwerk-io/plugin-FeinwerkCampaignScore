@@ -106,4 +106,27 @@ final class AllSites
     {
         return 'fwcs_allsites_' . md5((string) json_encode([$login, array_values($idSites), $period, $date, $segment, $day, $settings]));
     }
+
+    /**
+     * The score rows with the period before: previous_score and score_change (points, one decimal) where both periods
+     * have a score. Pure.
+     *
+     * @param array<int, array<string, int|float>> $rows
+     * @param array<int, array<string, int|float>> $previous
+     * @return array<int, array<string, int|float>>
+     */
+    public static function withPrevious(array $rows, array $previous): array
+    {
+        foreach ($rows as $idSite => $columns) {
+            $before = $previous[$idSite]['score'] ?? null;
+            if ($before === null) {
+                continue;
+            }
+            $rows[$idSite]['previous_score'] = $before;
+            if (isset($columns['score'])) {
+                $rows[$idSite]['score_change'] = round((float) $columns['score'] - (float) $before, 1);
+            }
+        }
+        return $rows;
+    }
 }

@@ -4,27 +4,43 @@
  * dark variant: [data-theme-mode="dark"], and "auto" with a dark system setting.
  */
 .fwcs-card,
-.fwcs-allsites {
+.fwcs-allsites,
+.fwcs-findings {
     --fwcs-good: #2e7d32;
     --fwcs-ok: #9a5b00;
     --fwcs-poor: #c62828;
+    --fwcs-chip-fix: rgba(198, 40, 40, .08);
+    --fwcs-chip-clean: rgba(46, 125, 50, .10);
+    --fwcs-track: rgba(0, 0, 0, .08);
+}
+
+.fwcs-card,
+.fwcs-allsites {
     padding: 12px 16px;
     color: var(--theme-color-text, #212121);
 }
 
 [data-theme-mode="dark"] .fwcs-card,
-[data-theme-mode="dark"] .fwcs-allsites {
+[data-theme-mode="dark"] .fwcs-allsites,
+[data-theme-mode="dark"] .fwcs-findings {
     --fwcs-good: #81c784;
     --fwcs-ok: #ffb74d;
     --fwcs-poor: #ef9a9a;
+    --fwcs-chip-fix: rgba(239, 154, 154, .16);
+    --fwcs-chip-clean: rgba(129, 199, 132, .16);
+    --fwcs-track: rgba(255, 255, 255, .12);
 }
 
 @media (prefers-color-scheme: dark) {
     [data-theme-mode="auto"] .fwcs-card,
-    [data-theme-mode="auto"] .fwcs-allsites {
+    [data-theme-mode="auto"] .fwcs-allsites,
+    [data-theme-mode="auto"] .fwcs-findings {
         --fwcs-good: #81c784;
         --fwcs-ok: #ffb74d;
         --fwcs-poor: #ef9a9a;
+        --fwcs-chip-fix: rgba(239, 154, 154, .16);
+        --fwcs-chip-clean: rgba(129, 199, 132, .16);
+        --fwcs-track: rgba(255, 255, 255, .12);
     }
 }
 
@@ -236,7 +252,9 @@
 
     /* Visits: as narrow as its numbers, so value and suggestion get the room */
     .fwcs-findings table.dataTable th:nth-child(3),
-    .fwcs-findings table.dataTable tr:not(.subDataTableContainer) td.column:nth-child(3) {
+    .fwcs-findings table.dataTable th:nth-child(4),
+    .fwcs-findings table.dataTable tr:not(.subDataTableContainer) td.column:nth-child(3),
+    .fwcs-findings table.dataTable tr:not(.subDataTableContainer) td.column:nth-child(4) {
         width: 1%;
     }
 }
@@ -255,6 +273,18 @@
 .card-content .fwcs-allsites {
     padding-left: 0;
     padding-right: 0;
+}
+
+/* the website names in line with Matomo's table text (UI review 2026-11-25 W5) */
+.card-content .fwcs-allsites__table th:first-child,
+.card-content .fwcs-allsites__table td:first-child {
+    padding-left: 0;
+}
+
+/* the dashboard widget's content in line with the widget title (W5) */
+.fwcs-card--widget {
+    padding-left: 20px;
+    padding-right: 20px;
 }
 
 .fwcs-allsites__table {
@@ -331,7 +361,7 @@
 }
 
 /* the visible "Accept value" in rows without a suggestion (admins): a quiet text button in Matomo's link colour */
-.fwcs-findings .fwcs-accept-btn {
+.fwcs-findings .fwcs-row-btn {
     /* breaks only between words, never inside "akzeptieren" (the suggestion cell may break anywhere on phones) */
     overflow-wrap: normal;
     word-break: normal;
@@ -345,13 +375,13 @@
     cursor: pointer;
 }
 
-.fwcs-findings .fwcs-accept-btn:hover,
-.fwcs-findings .fwcs-accept-btn:focus {
+.fwcs-findings .fwcs-row-btn:hover,
+.fwcs-findings .fwcs-row-btn:focus {
     background: transparent;
     text-decoration: underline;
 }
 
-.fwcs-findings .fwcs-accept-btn:focus-visible {
+.fwcs-findings .fwcs-row-btn:focus-visible {
     outline: 2px solid var(--theme-color-focus-ring, var(--theme-color-link, #1976d2));
     outline-offset: 2px;
 }
@@ -361,4 +391,360 @@
     margin-top: 8px;
     font-size: 13px;
     color: var(--theme-color-text-light, #444);
+}
+
+/* ---- 6.3.0: the score with its verdict, bars per field, fixed findings, email (UI review proposals b, c, e, i) ---- */
+
+.fwcs-card__scorebox {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.fwcs-card__verdict {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.fwcs-card__verdict--good {
+    color: var(--fwcs-good);
+}
+
+.fwcs-card__verdict--ok {
+    color: var(--fwcs-ok);
+}
+
+.fwcs-card__verdict--poor {
+    color: var(--fwcs-poor);
+}
+
+.fwcs-sparkline__base {
+    opacity: .25;
+}
+
+.fwcs-sparkline__dot {
+    fill: currentColor;
+}
+
+.fwcs-sparkline__dot--now {
+    fill: var(--theme-color-text, #212121);
+}
+
+.fwcs-card__fixed {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--fwcs-good);
+}
+
+.fwcs-lost {
+    max-width: 360px;
+    margin: 10px 0 8px;
+    font-size: 12px;
+}
+
+.fwcs-lost__title {
+    margin-bottom: 4px;
+    color: var(--theme-color-text-light, #444);
+}
+
+/* one grid for all rows, so every bar starts and ends at the same place (UI review 2026-11-26 F3) */
+.fwcs-lost__list {
+    display: grid;
+    grid-template-columns: max-content minmax(40px, 1fr) max-content max-content;
+    align-items: center;
+    gap: 4px 8px;
+    margin: 0;
+}
+
+.fwcs-lost__list dt {
+    font-weight: normal;
+    color: var(--theme-color-text-light, #444);
+}
+
+.fwcs-lost__list dd {
+    margin: 0;
+}
+
+.fwcs-lost__bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--fwcs-track);
+    overflow: hidden;
+}
+
+/* neutral: the colour belongs to the score alone (D1) */
+.fwcs-lost__bar span {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: var(--theme-color-text-lighter, #646464);
+}
+
+.fwcs-lost__points {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.fwcs-lost__count {
+    color: var(--theme-color-text-lighter, #646464);
+}
+
+.fwcs-card__email {
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+.fwcs-card__email a,
+.fwcs-card .fwcs-card__email-btn {
+    color: var(--theme-color-link, #1976d2);
+}
+
+.fwcs-card .fwcs-card__email-btn {
+    padding: 0;
+    text-align: start;
+    border: 0;
+    background: none;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.fwcs-card .fwcs-card__email-btn:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring, var(--theme-color-link, #1976d2));
+    outline-offset: 2px;
+}
+
+.fwcs-card__email-status {
+    display: block;
+    color: var(--theme-color-text-lighter, #646464);
+}
+
+.fwcs-card__email-status:empty {
+    display: none;
+}
+
+/* ---- the findings table: filter, points, chips for spelling variants, hints (proposals a, f, j, D7) ---- */
+
+.fwcs-findings .datatableHeaderMessage {
+    margin: 0 0 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+}
+
+.fwcs-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.fwcs-filter__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border: 1px solid var(--theme-color-border, #e0e0e0);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--theme-color-text, #212121);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.fwcs-filter__chip:hover {
+    border-color: var(--theme-color-link, #1976d2);
+}
+
+.fwcs-filter__chip.is-active,
+.fwcs-filter .fwcs-filter__chip.is-active:focus {
+    border-color: var(--theme-color-link, #1976d2);
+    background: var(--theme-color-link, #1976d2);
+    color: #fff;
+}
+
+/* Materialize paints a focused button teal (button:focus); the ring comes from :focus-visible (UI review F1) */
+.fwcs-filter .fwcs-filter__chip:focus {
+    background: transparent;
+}
+
+[data-theme-mode="dark"] .fwcs-filter__chip.is-active,
+[data-theme-mode="dark"] .fwcs-filter .fwcs-filter__chip.is-active:focus {
+    color: #121212;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme-mode="auto"] .fwcs-filter__chip.is-active,
+    [data-theme-mode="auto"] .fwcs-filter .fwcs-filter__chip.is-active:focus {
+        color: #121212;
+    }
+}
+
+.fwcs-filter__chip:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring, var(--theme-color-link, #1976d2));
+    outline-offset: 2px;
+}
+
+.fwcs-filter__count {
+    font-variant-numeric: tabular-nums;
+}
+
+/* the points column: numbers in a row, the plus in the score's green */
+.fwcs-findings table.dataTable td.column:nth-child(3) .value {
+    font-variant-numeric: tabular-nums;
+}
+
+.fwcs-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    line-height: 1.5;
+}
+
+.fwcs-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: var(--fwcs-chip-fix);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.fwcs-chip--clean {
+    background: var(--fwcs-chip-clean);
+}
+
+.fwcs-chip__mark {
+    color: var(--fwcs-good);
+}
+
+.fwcs-chip__count {
+    color: var(--theme-color-text-lighter, #646464);
+    font-variant-numeric: tabular-nums;
+    /* a count never breaks ("40" read as "4" over "0", UI review F2) */
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
+[data-theme-mode="dark"] .fwcs-chip__count {
+    color: var(--theme-color-text-light, #aaa);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-theme-mode="auto"] .fwcs-chip__count {
+        color: var(--theme-color-text-light, #aaa);
+    }
+}
+
+/* with chips the plain label stays for screen readers, search and exports, but is not shown twice */
+.fwcs-findings td.label:has(.fwcs-chips) > .value,
+.fwcs-findings td.label:has(.fwcs-chips) span.label > .value {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.fwcs-hint {
+    font-size: 12px;
+    color: var(--theme-color-text-lighter, #646464);
+    white-space: normal;
+    /* breaks only between words: the column grows to the longest word ("Kampagnenlinks") instead of cutting it */
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+/* the chips on a line of their own; Matomo's space after the prefix takes no extra line when they wrap */
+.fwcs-findings td.label .label-prefix:has(.fwcs-chips) {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0;
+    line-height: 0;
+}
+
+.fwcs-findings td.label .label-prefix:has(.fwcs-chips) .fwcs-new {
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+
+/* phones: points first; the visits per spelling are in the chips, the full table in the exports and on wider screens */
+@media (max-width: 600px) {
+    .fwcs-chip {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .fwcs-findings table.dataTable th:nth-child(4),
+    .fwcs-findings table.dataTable tr:not(.subDataTableContainer) td.column:nth-child(4) {
+        display: none;
+    }
+}
+
+/* the trend per website on request (all websites) */
+.fwcs-allsites__compare-box {
+    margin-top: 8px;
+}
+
+.fwcs-allsites .fwcs-allsites__compare {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--theme-color-link, #1976d2);
+    font: inherit;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.fwcs-allsites .fwcs-allsites__compare:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring, var(--theme-color-link, #1976d2));
+    outline-offset: 2px;
+}
+
+.fwcs-allsites .fwcs-allsites__compare[disabled] {
+    cursor: wait;
+    opacity: .6;
+}
+
+/* phones: the fix is the second line of the value, the Suggestion column goes (UI review 2026-11-26 D2) */
+.fwcs-fix-inline {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .fwcs-findings table.dataTable th:nth-child(2),
+    .fwcs-findings table.dataTable tr:not(.subDataTableContainer) td.column:nth-child(2) {
+        display: none;
+    }
+
+    .fwcs-fix-inline {
+        display: block;
+        margin: 2px 0;
+        font-size: 13px;
+        white-space: normal;
+    }
+
+    .fwcs-fix-inline:empty {
+        display: none;
+    }
+}
+
+/* the widget's top findings: the points they are sorted by (D3) */
+.fwcs-card__top-points {
+    margin-bottom: 4px;
+}
+
+/* the change inside the score cell, so phones keep four columns (UI review 2026-11-26 D4) */
+.fwcs-allsites__change {
+    margin-left: 4px;
+    font-size: 12px;
 }

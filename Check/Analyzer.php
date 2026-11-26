@@ -50,7 +50,9 @@ final class Analyzer
 
         $unchecked = $data->uncheckedVisits + $data->unknownVisits;
         $checked = max(0, $data->campaignVisits - $unchecked);
-        $clean = min($checked, self::cleanVisits($data, $convention, self::valuesToReplace($findings)));
+        $replace = self::valuesToReplace($findings);
+        $clean = min($checked, self::cleanVisits($data, $convention, $replace));
+        $uncleanShares = self::uncleanShares($data, $convention, $replace);
 
         // a previous period without campaign visits is no comparison (else every finding would be "new")
         if ($previous !== null && $previous->campaignVisits <= 0) {
@@ -61,10 +63,13 @@ final class Analyzer
             $previousKeys[$finding->key()] = true;
         }
         $decorated = [];
+        $currentKeys = [];
         foreach ($findings as $finding) {
+            $currentKeys[$finding->key()] = true;
             $decorated[] = $finding->with(
                 $data->withSourceMedium ? self::contexts($finding, $data->units) : [],
-                $previous !== null && !isset($previousKeys[$finding->key()])
+                $previous !== null && !isset($previousKeys[$finding->key()]),
+                self::scoreGain($finding, $uncleanShares, $checked, $data->withSourceMedium)
             );
         }
 
@@ -76,8 +81,124 @@ final class Analyzer
             $unchecked,
             $data->withSourceMedium,
             Finding::sort($decorated),
-            $previous !== null ? $previous->score : null
+            $previous !== null ? $previous->score : null,
+            self::fieldShares($data, $convention, $replace),
+            $previous !== null && $checked > 0 ? self::fixedFindings($previous, $currentKeys, $data) : null
         );
+    }
+
+    /**
+     * The unclean visits shared out to the values that make them unclean: field => value ('' for no value) => visits. A
+     * visit with one unclean field counts fully for its value, a visit with two counts half for each (found in the sandbox
+     * check of 2026-11-26: counting only the visits a fix alone makes clean showed 0 points for "e-mail", whose visits
+     * also had a wrong name), so the points of all findings add up to the points the score misses.
+     *
+     * @param array<string, array<string, true>> $replace
+     * @return array<string, array<string, float>>
+     */
+    private static function uncleanShares(CampaignData $data, Convention $convention, array $replace): array
+    {
+        $scored = $data->withSourceMedium ? self::SCORED_FIELDS : ['name'];
+        $shares = [];
+        foreach ($data->units as $unit) {
+            $unclean = [];
+            foreach ($scored as $field) {
+                if (!self::isClean($field, $unit[$field] ?? null, $convention, $replace)) {
+                    $unclean[] = $field;
+                }
+            }
+            foreach ($unclean as $field) {
+                $key = (string) ($unit[$field] ?? '');
+                $shares[$field][$key] = ($shares[$field][$key] ?? 0.0) + (int) $unit['visits'] / count($unclean);
+            }
+        }
+        return $shares;
+    }
+
+    /**
+     * Score points (0 to 100, one decimal) the finding accounts for: its share of the unclean visits (uncleanShares).
+     * Findings that do not lower the score (typo hints, keyword, content, group, placement) account for none.
+     *
+     * @param array<string, array<string, float>> $uncleanShares
+     */
+    private static function scoreGain(Finding $finding, array $uncleanShares, int $checked, bool $withSourceMedium): float
+    {
+        $scored = $withSourceMedium ? self::SCORED_FIELDS : ['name'];
+        if ($checked <= 0 || !in_array($finding->field, $scored, true)
+            || !in_array($finding->type, array_merge(Finding::SCORED, [Finding::INCOMPLETE]), true)
+        ) {
+            return 0.0;
+        }
+        $visits = 0.0;
+        $values = $finding->type === Finding::INCOMPLETE ? [''] : $finding->valuesToFix();
+        foreach ($values as $value) {
+            $visits += $uncleanShares[$finding->field][(string) $value] ?? 0.0;
+        }
+        return round(min(100.0, $visits / $checked * 100), 1);
+    }
+
+    /**
+     * The share of each scored field's visits with a clean value: the values of the field's report (its "Others" rows
+     * are not checkable), plus its missing values as not clean when source and medium are known.
+     *
+     * @param array<string, array<string, true>> $replace
+     * @return array<string, float|null>
+     */
+    private static function fieldShares(CampaignData $data, Convention $convention, array $replace): array
+    {
+        $shares = [];
+        foreach ($data->withSourceMedium ? self::SCORED_FIELDS : ['name'] as $field) {
+            $clean = 0;
+            $all = 0;
+            foreach ($data->fields[$field] ?? [] as $value => $visits) {
+                $all += (int) $visits;
+                if (self::isClean($field, (string) $value, $convention, $replace)) {
+                    $clean += (int) $visits;
+                }
+            }
+            if ($data->withSourceMedium) {
+                $all += max(0, $data->campaignVisits - $data->unknownVisits - (int) array_sum($data->fields[$field] ?? [])
+                    - ($data->fieldOthers[$field] ?? 0));
+            }
+            $shares[$field] = $all > 0 ? (float) ($clean / $all) : null;
+        }
+        return $shares;
+    }
+
+    /**
+     * Findings of the previous period that are fixed now: gone from this period, and the clean spelling (the
+     * suggestion) has visits now, or, for a missing value, the field is complete now. A finding that is only gone (its
+     * campaign did not run) does not count.
+     *
+     * @param array<string, true> $currentKeys
+     */
+    private static function fixedFindings(Result $previous, array $currentKeys, CampaignData $data): int
+    {
+        $fixed = 0;
+        foreach ($previous->findings as $finding) {
+            if (isset($currentKeys[$finding->key()])) {
+                continue;
+            }
+            if ($finding->type === Finding::INCOMPLETE) {
+                $fixed += $data->withSourceMedium ? 1 : 0;
+                continue;
+            }
+            $suggestion = (string) $finding->suggestion;
+            if ($suggestion !== '' && isset($data->fields[$finding->field][$suggestion])) {
+                $fixed++;
+            }
+        }
+        return $fixed;
+    }
+
+    /**
+     * @param array<string, array<string, true>> $replace
+     */
+    private static function isClean(string $field, ?string $value, Convention $convention, array $replace): bool
+    {
+        return $value !== null
+            && ($convention->isAccepted($value)
+                || (!isset($replace[$field][$value]) && FieldChecker::isCleanValue($field, $value, $convention)));
     }
 
     /**
@@ -106,12 +227,7 @@ final class Analyzer
         $clean = 0;
         foreach ($data->units as $unit) {
             foreach ($scored as $field) {
-                $value = $unit[$field] ?? null;
-                if (
-                    $value === null
-                    || (!$convention->isAccepted($value)
-                        && (isset($replace[$field][$value]) || !FieldChecker::isCleanValue($field, $value, $convention)))
-                ) {
+                if (!self::isClean($field, $unit[$field] ?? null, $convention, $replace)) {
                     continue 2;
                 }
             }

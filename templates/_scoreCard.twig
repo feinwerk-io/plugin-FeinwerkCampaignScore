@@ -6,20 +6,39 @@
 <div class="fwcs-card{% if asDashboardWidget %} fwcs-card--widget{% endif %}">
     {% if card.hasData %}
         <div class="fwcs-card__head">
-            <span class="fwcs-card__score fwcs-card__score--{{ card.level }}">{{ card.score }}</span>
+            <div class="fwcs-card__scorebox">
+                <span class="fwcs-card__score fwcs-card__score--{{ card.level }}">{{ card.score }}</span>
+                {% if card.verdict %}<span class="fwcs-card__verdict fwcs-card__verdict--{{ card.level }}">{{ card.verdict }}</span>{% endif %}
+            </div>
             {% if sparkline %}
                 <svg class="fwcs-sparkline" viewBox="0 0 {{ sparklineWidth }} {{ sparklineHeight }}" width="{{ sparklineWidth }}"
-                     height="{{ sparklineHeight }}" role="img" aria-label="{{ 'FeinwerkCampaignScore_SparklineTitle'|translate }}">
-                    <title>{{ 'FeinwerkCampaignScore_SparklineTitle'|translate }}</title>
+                     height="{{ sparklineHeight }}" role="img" aria-label="{{ sparklineLabel|default('FeinwerkCampaignScore_SparklineTitle'|translate) }}">
+                    <title>{{ sparklineLabel|default('FeinwerkCampaignScore_SparklineTitle'|translate) }}</title>
                     {% if sparkline.gaps %}<path class="fwcs-sparkline__gap" d="{{ sparkline.gaps }}" fill="none" stroke="currentColor" stroke-width="1.5"
                               stroke-dasharray="1 4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>{% endif %}
                     <path d="{{ sparkline.line }}" fill="none" stroke="currentColor" stroke-width="2"
                               stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+                    {% for dot in sparkline.dots %}<circle class="fwcs-sparkline__dot{% if loop.last %} fwcs-sparkline__dot--now{% endif %}" cx="{{ dot.x }}" cy="{{ dot.y }}" r="{{ loop.last ? 3 : 2 }}"/>{% endfor %}
                 </svg>
             {% endif %}
             <div class="fwcs-card__text">
                 <div class="fwcs-card__basis">{{ card.basis }}</div>
                 {% if card.delta %}<div class="fwcs-card__delta fwcs-card__delta--{{ card.deltaDirection }}">{{ card.delta }}</div>{% endif %}
+                {% if card.fixed %}<div class="fwcs-card__fixed"><span aria-hidden="true">&#10003;</span> {{ card.fixed }}</div>{% endif %}
+                {% if card.lostPoints is not empty and not asDashboardWidget %}
+                    {# where the missing points are, per field, in the unit of the Points column (UI review 2026-11-26 D1) #}
+                    <div class="fwcs-lost">
+                        <div class="fwcs-lost__title">{{ card.lostTitle }}</div>
+                        <dl class="fwcs-lost__list">
+                            {% for row in card.lostPoints %}
+                                <dt>{{ row.field }}</dt>
+                                <dd class="fwcs-lost__bar" aria-hidden="true"><span style="width: {{ row.width }}%"></span></dd>
+                                <dd class="fwcs-lost__points">{{ row.points }}</dd>
+                                <dd class="fwcs-lost__count">{{ row.findings }}</dd>
+                            {% endfor %}
+                        </dl>
+                    </div>
+                {% endif %}
                 <div class="fwcs-card__meta">{{ card.fields }}{% if card.unchecked %} {{ card.unchecked }}{% endif %}</div>
                 {% if split|default and downloads is not empty %}
                     {# beside the guide: the correction list under this text; the convention export is a step of the
@@ -27,6 +46,17 @@
                     <div class="fwcs-card__downloads fwcs-card__downloads--inline">
                         <a href="{{ downloads[0].url }}" rel="noopener" download>{{ downloads[0].label }}</a>
                         {% if downloads[1] is defined %}<a class="fwcs-card__export-alt" href="{{ downloads[1].url }}" rel="noopener" download>{{ downloads[1].label }}</a>{% endif %}
+                    </div>
+                {% endif %}
+                {% if emailReport|default %}
+                    {# one click to the Campaign Score by email every week (javascripts/emailreport.js, API addEmailReport) #}
+                    <div class="fwcs-card__email">
+                        {% if emailReport.exists %}
+                            <a href="{{ emailReport.manageUrl }}">{{ 'FeinwerkCampaignScore_EmailReportManage'|translate }}</a>
+                        {% else %}
+                            <button type="button" class="fwcs-card__email-btn" data-manage-url="{{ emailReport.manageUrl }}">{{ 'FeinwerkCampaignScore_EmailReportAdd'|translate }}</button>
+                            <span class="fwcs-card__email-status" role="status" aria-live="polite"></span>
+                        {% endif %}
                     </div>
                 {% endif %}
                 {% if card.hint and asDashboardWidget %}<div class="fwcs-card__meta">{{ card.hint }}</div>{% endif %}
@@ -40,7 +70,8 @@
     {% endif %}
 
     {% if asDashboardWidget and card.hasData %}
-        <div class="fwcs-card__problems-title">{{ 'FeinwerkCampaignScore_TopProblems'|translate }}</div>
+        <div class="fwcs-card__problems-title">{{ 'FeinwerkCampaignScore_TopFindings'|translate }}</div>
+        {% if card.topPoints %}<div class="fwcs-card__meta fwcs-card__top-points">{{ card.topPoints }}</div>{% endif %}
         {% if card.problems is empty %}
             <div class="fwcs-card__meta">{{ 'FeinwerkCampaignScore_NoProblems'|translate }}</div>
         {% else %}
@@ -48,7 +79,7 @@
                 {% for problem in card.problems %}
                     <li>
                         <span class="fwcs-card__value">{{ problem.value|rawSafeDecoded }}</span>
-                        <span class="fwcs-card__visits" title="{{ 'General_ColumnNbVisits'|translate }}">{{ problem.visits }}</span>
+                        {% if problem.points %}<span class="fwcs-card__visits fwcs-card__points" title="{{ 'FeinwerkCampaignScore_ColumnScoreGain'|translate }}">{{ problem.points }}</span>{% else %}<span class="fwcs-card__visits" title="{{ 'General_ColumnNbVisits'|translate }}">{{ problem.visits }}</span>{% endif %}
                         <span class="fwcs-card__problem">{{ problem.problem }} ({{ problem.field }}){% if problem.suggestion %} <span aria-hidden="true">&rarr;</span> <span class="fwcs-card__suggestion">{{ problem.suggestion|rawSafeDecoded }}</span>{% endif %}</span>
                     </li>
                 {% endfor %}

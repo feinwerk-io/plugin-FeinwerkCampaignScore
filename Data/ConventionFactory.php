@@ -28,7 +28,8 @@ final class ConventionFactory
 
     /**
      * @param array<string, mixed> $system mediums, separator, namePattern, sourceAliases, typoHints
-     * @param array<string, mixed> $site mediums, accepted, separator, namePattern (empty or "inherit": the system's)
+     * @param array<string, mixed> $site mediums, extraMediums (added to the list in force), accepted, separator,
+     *                                   namePattern (empty or "inherit": the system's)
      */
     public static function build(array $system, array $site): Convention
     {
@@ -51,7 +52,7 @@ final class ConventionFactory
         }
 
         return new Convention(
-            MediumList::fromText($mediums),
+            MediumList::fromText($mediums)->with(MediumList::parse((string) ($site['extraMediums'] ?? ''))),
             Convention::acceptedFromText((string) ($site['accepted'] ?? '')),
             $separator,
             $pattern,
@@ -85,6 +86,7 @@ final class ConventionFactory
         $site = new MeasurableSettings($idSite);
         return self::build(self::systemValues(), [
             'mediums' => $site->mediums->getValue(),
+            'extraMediums' => $site->extraMediums->getValue(),
             'accepted' => $site->accepted->getValue(),
             'separator' => $site->separator->getValue(),
             'namePattern' => $site->namePattern->getValue(),
@@ -146,7 +148,9 @@ final class ConventionFactory
         return [
             'separator' => ['value' => $separatorNames[$convention->separator] ?? 'any', 'source' => $sourceOf('separator')],
             'name_pattern' => ['value' => $convention->namePattern, 'source' => $convention->namePattern === null ? 'default' : $sourceOf('namePattern')],
+            // the list in force, the website's additional mediums included; source: where its base list comes from
             'mediums' => ['value' => $convention->mediums->values(), 'source' => $sourceOf('mediums')],
+            'additional_mediums' => MediumList::parse((string) ($site['extraMediums'] ?? '')),
             'accepted_values' => array_map('strval', array_keys(Convention::acceptedFromText((string) ($site['accepted'] ?? '')))),
             'source_aliases' => self::flag($system['sourceAliases'] ?? true),
             'typo_hints' => self::flag($system['typoHints'] ?? true),
@@ -160,6 +164,7 @@ final class ConventionFactory
 
         return self::rulesFrom(self::systemValues(), [
             'mediums' => $site->mediums->getValue(),
+            'extraMediums' => $site->extraMediums->getValue(),
             'accepted' => $site->accepted->getValue(),
             'separator' => $site->separator->getValue(),
             'namePattern' => $site->namePattern->getValue(),

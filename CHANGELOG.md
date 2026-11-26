@@ -1,5 +1,23 @@
 # Changelog
 
+## 6.3.0
+
+- Every finding shows how many score points it costs, and the findings are sorted by them: fix the top ones first. All points together add up to what the score misses.
+- The score card names the result in words (good, needs work, poor), shows where the missing points are (campaign name, source and medium, in points with their findings), and counts the findings fixed since the previous period.
+- Filter the findings by type with one click above the table.
+- Spelling variants show as small labels with their visits, the clean spelling marked.
+- Rows without a suggestion say what to do instead of showing "-".
+- "Mark as correct" replaces "Accept value", and an unusual medium that is right for your website goes into its usual mediums with one click ("Add to usual mediums", new website setting "Additional usual mediums").
+- One click in the score card sends you the Campaign Score every week by email. When the score falls by 5 points or more, the email opens with that news and marks the new findings.
+- The overview of all websites can compare each website with the previous period.
+- The setting "Usual mediums" lists the whole default list below the field.
+- The small score trend shows each period as a dot; the dashboard widget lists the findings worth the most points, with their points and what fixing them brings.
+- On phones the findings table shows the value with its fix below it and the points, without sideways scrolling.
+- API: `getFindings` has `score_gain` and the filter `findingType`; `getScore` has `previous_score`, `score_name`, `score_source`, `score_medium` and `fixed_findings`; new `addUsualMediums`, `removeUsualMediums` and `addEmailReport`; `getScoresForAllSites` takes `withPreviousPeriod=1`.
+- On narrow screens the tip under a report shows a shorter link, so it no longer makes the page wider than the screen.
+- The tip about campaigns now offers the free plugin Feinwerk Campaign Manager; where it is installed, the tip leads to its campaign overview, and once it is connected, the tip no longer shows.
+- The label of the "Install and activate" button of the Feinwerk Connector page sits centred.
+
 ## 6.2.0
 
 - Right under Matomo's Campaign Names report a line shows the Campaign Score of the period with its number of findings and a link to them (no link when there are none).
