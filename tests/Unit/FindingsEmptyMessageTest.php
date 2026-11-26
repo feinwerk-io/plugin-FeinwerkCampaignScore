@@ -30,7 +30,8 @@ class FindingsEmptyMessageTest extends TestCase
     public function test_the_accept_button_is_a_plain_escaped_button(): void
     {
         $button = GetFindings::acceptButton('Accept <value>', 'Count "this" as clean');
-        $this->assertStringStartsWith('<button type="button" class="fwcs-accept-btn"', $button);
+        $this->assertStringStartsWith('<button type="button" class="fwcs-accept-btn fwcs-row-btn"', $button);
+        $this->assertStringStartsWith('<button type="button" class="fwcs-medium-btn fwcs-row-btn"', GetFindings::acceptButton('Add', 'Usual', '', 'fwcs-medium-btn'));
         $this->assertStringContainsString('title="Count &quot;this&quot; as clean"', $button);
         $this->assertStringContainsString('>Accept &lt;value&gt;</button>', $button);
         $this->assertStringNotContainsString('aria-label', $button);

@@ -25,7 +25,7 @@
                 {% for site in sites %}
                     <tr>
                         <td><a href="{{ site.url }}">{{ site.name|rawSafeDecoded }}</a></td>
-                        <td class="fwcs-allsites__num">{% if site.score %}<span class="fwcs-card__score--{{ site.level }}">{{ site.score }}</span>{% endif %}</td>
+                        <td class="fwcs-allsites__num">{% if site.score %}<span class="fwcs-card__score--{{ site.level }}">{{ site.score }}</span>{% endif %}{% if compare|default and site.change %} <span class="fwcs-allsites__change fwcs-card__delta--{{ site.changeDirection }}" title="{{ 'FeinwerkCampaignScore_ColumnChange'|translate }}">{{ site.change }}</span>{% endif %}</td>
                         <td class="fwcs-allsites__num">{{ site.visits }}</td>
                         <td class="fwcs-allsites__num">{{ site.findings }}</td>
                     </tr>
@@ -34,5 +34,13 @@
         </table>
         </div>
         {% if limited|default %}<div class="fwcs-card__meta">{{ limited }}</div>{% endif %}
+        {% if compareUrl|default %}
+            {# the trend per website on request: it reads the period before of every website (javascripts/allsites.js) #}
+            <div class="fwcs-allsites__compare-box">
+                <button type="button" class="fwcs-allsites__compare" data-url="{{ compareUrl }}"
+                        data-loading="{{ 'General_LoadingData'|translate }}" data-error="{{ 'FeinwerkCampaignScore_ErrorLoading'|translate }}">{{ 'FeinwerkCampaignScore_AllSitesCompare'|translate }}</button>
+                <span class="fwcs-card__meta fwcs-allsites__status" aria-live="polite"></span>
+            </div>
+        {% endif %}
     {% endif %}
 </div>

@@ -5,8 +5,9 @@
  */
 
 /*
- * Row action "Accept value" in the findings table of Campaign Score: admins of the website mark the values of a
- * finding as accepted (API method acceptValues, website setting "Accepted values"); they then count as clean. Shown
+ * Row action "Mark as correct" in the findings table of Campaign Score: admins of the website mark the values of a
+ * finding as correct (API method acceptValues, website setting "Values marked as correct"); they then count as clean.
+ * The visible button of an unusual medium adds it to the website's usual mediums instead (API addUsualMediums). Shown
  * only where the report says so (custom parameter fwcs_can_accept) and for rows with values (row metadata "accept").
  * Plain script without a build, for Matomo 5.0 to 6.x.
  */
@@ -66,7 +67,7 @@
     var opener = null;
 
     function restoreFocus() {
-        var candidates = [opener, openerRow && document.body.contains(openerRow) ? openerRow.querySelector('.fwcs-accept-btn') : null];
+        var candidates = [opener, openerRow && document.body.contains(openerRow) ? openerRow.querySelector('.fwcs-row-btn') : null];
         for (var i = 0; i < candidates.length; i++) {
             var element = candidates[i];
             if (element && document.body.contains(element) && element.offsetParent !== null && typeof element.focus === 'function') {
@@ -114,8 +115,8 @@
         window.piwikHelper.modalConfirm(box, callbacks, {onCloseEnd: restoreFocus});
     }
 
-    function showError(message) {
-        dialog('fwcs-accept-error', message || translate('AcceptFailed'), [['yes', translateCore('General_Ok')]], {});
+    function showError(message, failedKey) {
+        dialog('fwcs-accept-error', message || translate(failedKey || 'AcceptFailed'), [['yes', translateCore('General_Ok')]], {});
     }
 
     AcceptAction.prototype.trigger = function (tr) {
@@ -136,25 +137,71 @@
         dialog('fwcs-accept-confirm', translate('AcceptConfirm', [shown]),
             [['yes', translateCore('General_Yes')], ['no', translateCore('General_No')]], {
                 yes: function () {
-                    send(values);
+                    send('acceptValues', values, 'AcceptFailed');
                 }
             }, translate('AcceptConfirmText'));
+    }
+
+    // an unusual medium that is right for this website: into its additional usual mediums (API addUsualMediums)
+    function hasUsualMedium(tr) {
+        try {
+            var metadata = JSON.parse($(tr).attr('data-row-metadata') || '{}');
+            return Array.isArray(metadata.usual_medium) && metadata.usual_medium.length > 0;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function usualMediumOfRow(tr) {
+        try {
+            var metadata = JSON.parse($(tr).attr('data-row-metadata') || '{}');
+            return Array.isArray(metadata.usual_medium) && metadata.usual_medium.length ? metadata.usual_medium : valuesOfRow(tr);
+        } catch (e) {
+            return valuesOfRow(tr);
+        }
+    }
+
+    function mediumRow(tr) {
+        // the clean spelling that goes into the list (Reports/GetFindings.php, metadata usual_medium)
+        var values = usualMediumOfRow(tr);
+        if (!values.length || busy) {
+            return;
+        }
+        var row = tr && tr.jquery ? tr[0] : tr;
+        openerRow = row && row.nodeType === 1 ? row : null;
+        opener = openerRow && document.activeElement && openerRow.contains(document.activeElement) ? document.activeElement : null;
+        var shown = values.map(decode).join(', ');
+        // the row's spelling and the one that goes into the list, when they differ (UI review 2026-11-26 W2)
+        var written = valuesOfRow(tr).map(decode).join(', ');
+        var question = written && written !== shown
+            ? translate('AddMediumConfirmAs', [written, shown])
+            : translate('AddMediumConfirm', [shown]);
+        dialog('fwcs-medium-confirm', question,
+            [['yes', translateCore('General_Yes')], ['no', translateCore('General_No')]], {
+                yes: function () {
+                    send('addUsualMediums', values, 'AddMediumFailed');
+                }
+            }, translate('AddMediumConfirmText'));
     }
 
     // the visible button in rows without a suggestion (Reports/GetFindings.php): the same confirmation and request.
     // Capture phase: the click stops here, before Matomo's row handler, which on touch devices opens the row actions.
     document.addEventListener('click', function (event) {
-        var button = event.target && event.target.closest ? event.target.closest('.fwcs-accept-btn') : null;
+        var button = event.target && event.target.closest ? event.target.closest('.fwcs-accept-btn, .fwcs-medium-btn') : null;
         var tr = button ? button.closest('tr') : null;
         if (!tr) {
             return;
         }
         event.preventDefault();
         event.stopPropagation();
-        acceptRow(tr);
+        if (button.classList.contains('fwcs-medium-btn')) {
+            mediumRow(tr);
+        } else {
+            acceptRow(tr);
+        }
     }, true);
 
-    function send(values) {
+    function send(method, values, failedKey) {
         if (busy) {
             return;
         }
@@ -166,7 +213,7 @@
         body.append('idSite', String(matomo.idSite || ''));
         body.append('values', values.join('\n'));
 
-        window.fetch('index.php?module=API&format=json&method=' + PLUGIN + '.acceptValues', {
+        window.fetch('index.php?module=API&format=json&method=' + PLUGIN + '.' + method, {
             method: 'POST',
             body: body,
             credentials: 'same-origin'
@@ -176,14 +223,14 @@
         }).then(function (answer) {
             if (!answer || answer.result === 'error') {
                 busy = false;
-                showError(answer && answer.message ? String(answer.message) : '');
+                showError(answer && answer.message ? String(answer.message) : '', failedKey);
                 return;
             }
             // score card and findings change together: load the page again
             window.location.reload();
         }).catch(function () {
             busy = false;
-            showError('');
+            showError('', failedKey);
         });
     }
 
@@ -199,7 +246,8 @@
                 && String(dataTableParams.fwcs_can_accept) === '1';
         },
         isAvailableOnRow: function (dataTableParams, tr) {
-            return valuesOfRow(tr).length > 0;
+            // an unusual medium has its own button ("Add to usual mediums"): one action per row (UI review W1)
+            return valuesOfRow(tr).length > 0 && !hasUsualMedium(tr);
         },
         createInstance: function (dataTable) {
             return new AcceptAction(dataTable);

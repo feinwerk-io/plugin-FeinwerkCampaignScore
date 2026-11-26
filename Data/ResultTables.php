@@ -40,8 +40,17 @@ final class ResultTables
             'unchecked_visits' => $result->uncheckedVisits,
             'with_source_medium' => (int) $result->withSourceMedium,
         ];
+        // the clean share of each scored field (percent): where the score is lost
+        foreach ($result->fieldShares as $field => $share) {
+            if ($share !== null) {
+                $columns['score_' . $field] = round($share * 100, 1);
+            }
+        }
         if ($withFindings) {
             $columns['findings'] = count($result->findings);
+            if ($result->fixedFindings !== null) {
+                $columns['fixed_findings'] = $result->fixedFindings;
+            }
         }
 
         $table = new DataTable();
@@ -51,7 +60,7 @@ final class ResultTables
 
     /**
      * One row per finding, most visits first. Columns label (the value, the variants separated by ", ", empty for a
-     * missing value) and nb_visits; metadata type, field, suggestion, values (value => visits), contexts (where the
+     * missing value), nb_visits and score_gain (the score points the finding costs); metadata type, field, suggestion, values (value => visits), contexts (where the
      * values occur), new (1: not in the previous period) and segment (the visits concerned).
      */
     public static function findings(Result $result): DataTable
@@ -67,6 +76,9 @@ final class ResultTables
                 Row::COLUMNS => [
                     'label' => implode(', ', array_keys($values)),
                     'nb_visits' => $finding->visits,
+                    // the score points the finding costs: its share of the unclean visits (0 for typo hints and for
+                    // fields that are not scored)
+                    'score_gain' => $finding->scoreGain,
                 ],
                 Row::METADATA => array_filter([
                     'type' => $finding->type,

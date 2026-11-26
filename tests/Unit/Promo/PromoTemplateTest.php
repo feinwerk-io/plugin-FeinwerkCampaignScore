@@ -49,6 +49,20 @@ class PromoTemplateTest extends TestCase
         self::assertStringNotContainsString('data-fwpromo-demo', $html);
     }
 
+    /** A link with a short form carries both texts; the full one (and the admin note) is its title. */
+    public function test_a_link_with_a_short_form_keeps_the_full_text_as_its_title(): void
+    {
+        $html = $this->render(['external' => false, 'note' => 'Ask your super user.', 'demo' => false,
+            'link' => 'Install the Feinwerk Connector from the Matomo Marketplace', 'linkShort' => 'Install the connector']);
+
+        self::assertStringContainsString('<span class="fwpromo-line__link-full">Install the Feinwerk Connector from the Matomo Marketplace</span>', $html);
+        self::assertStringContainsString('<span class="fwpromo-line__link-short">Install the connector</span>', $html);
+        self::assertStringContainsString('title="Install the Feinwerk Connector from the Matomo Marketplace. Ask your super user."', $html);
+        $plain = $this->render(['external' => false, 'note' => '', 'demo' => false]);
+        self::assertStringNotContainsString('fwpromo-line__link-short', $plain, 'without a short form: the link text alone');
+        self::assertSame(0, preg_match('/<a class="fwpromo-line__link"[^>]* title=/', $plain), 'and no title');
+    }
+
     public function test_an_external_link_opens_in_a_new_tab_with_its_note(): void
     {
         $html = $this->render(['external' => true, 'note' => 'Ask your super user.', 'demo' => true]);
@@ -67,5 +81,25 @@ class PromoTemplateTest extends TestCase
         self::assertSame(1, preg_match('/<a class="fwpromo-line__link"[^>]*>/', $html, $link));
         self::assertStringNotContainsString(' title="', $link[0], 'no note on the link');
         self::assertStringNotContainsString('data-fwpromo-demo', $html);
+    }
+
+    /** The context box opens a link inside Matomo (Campaign Manager's overview) in the same tab, a website in a new one. */
+    public function test_the_box_opens_a_link_inside_matomo_in_the_same_tab(): void
+    {
+        $box = static function (array $promo): string {
+            $loader = new FilesystemLoader();
+            $loader->addPath(__DIR__ . '/../../../templates', 'FeinwerkCampaignScore');
+            $twig = new Environment($loader, ['strict_variables' => false, 'autoescape' => 'html']);
+            $twig->addFilter(new TwigFilter('translate', static function (string $key): string {
+                return $key;
+            }));
+
+            return $twig->render('@FeinwerkCampaignScore/_promoBox.twig', ['promo' => $promo + ['id' => 'campaigns',
+                'placement' => 'campaigns', 'title' => 'T', 'text' => 'X', 'link' => 'L', 'url' => 'index.php?a=1',
+                'dismissDays' => 30, 'note' => '', 'demo' => false]]);
+        };
+        self::assertStringNotContainsString('target="_blank"', $box(['external' => false]));
+        self::assertStringContainsString('target="_blank" rel="noopener"', $box(['external' => true]));
+        self::assertStringContainsString('target="_blank" rel="noopener"', $box([]), 'an older caller keeps the new tab');
     }
 }

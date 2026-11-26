@@ -40,6 +40,18 @@ final class MediumList
      */
     public static function fromText(string $text): self
     {
+        $values = self::parse($text);
+
+        return new self($values === [] ? self::DEFAULTS : $values);
+    }
+
+    /**
+     * The mediums of a text: one per line or separated by commas, trimmed and lowercase, each once; [] for none.
+     *
+     * @return list<string>
+     */
+    public static function parse(string $text): array
+    {
         $values = [];
         foreach (preg_split('/[\r\n,]+/', $text) ?: [] as $value) {
             $value = mb_strtolower(trim($value), 'UTF-8');
@@ -47,8 +59,24 @@ final class MediumList
                 $values[$value] = true;
             }
         }
+        return array_map('strval', array_keys($values));
+    }
 
-        return new self($values === [] ? self::DEFAULTS : array_keys($values));
+    /**
+     * This list plus further mediums (a website's additional usual mediums).
+     *
+     * @param list<string> $extra
+     */
+    public function with(array $extra): self
+    {
+        $values = $this->values;
+        foreach ($extra as $value) {
+            $value = mb_strtolower(trim((string) $value), 'UTF-8');
+            if ($value !== '') {
+                $values[$value] = true;
+            }
+        }
+        return new self(array_map('strval', array_keys($values)));
     }
 
     public static function defaults(): self

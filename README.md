@@ -8,18 +8,20 @@
 campaign reports and make every comparison wrong. Campaign Score reads the campaign reports Matomo already has and
 gives you the share of campaign visits with clean values, for any website, period and segment.
 
-- **One score with context:** the score of the period, its change to the previous period and a small trend line, also
-  as a dashboard widget with the three largest problems.
-- **The trend:** Campaign Score over time shows whether your campaign data gets cleaner, and works in scheduled email
-  reports and alerts.
+- **One score with context:** the score of the period with a verdict, its change to the previous period, a small trend
+  line and a bar per field that shows where points are lost, also as a dashboard widget with the top findings.
+- **What to fix first:** every finding shows the score points it costs, and the findings are sorted by them.
+- **The trend:** Campaign Score over time shows whether your campaign data gets cleaner. One click sends you the score
+  every week by email, and a drop of 5 points or more opens that email.
 - **Every finding with a fix:** spelling variants, possible typos, unusual mediums, missing values, source aliases
   such as "fb" for facebook, separators and names outside your pattern, each with the field, the visits and a
   suggestion.
 - **Context for each finding:** where the value occurs, what is new since the previous period, and the matching visits
   in the visitor log with one click.
-- **Your rules per website:** accepted values, usual mediums, the separator and an optional pattern for campaign names.
-- **All websites at once:** the score of every website in one table, a correction list as CSV and your clean values as
-  a naming convention file.
+- **Your rules per website:** values marked as correct, usual mediums (one click adds an unusual one), the separator and
+  an optional pattern for campaign names.
+- **All websites at once:** the score of every website in one table, compared with the previous period on request, a
+  correction list as CSV and your clean values as a naming convention file.
 - **More fields with Marketing Campaigns Reporting:** with this free plugin, Campaign Score also checks source, medium,
   content, group and placement.
 
@@ -69,15 +71,21 @@ count; without it, the campaign name. A value is clean when it
 - is not a deviating spelling of another value and no known alias of a source (see below),
 - follows the separator and, for campaign names, the pattern of your convention, if you set them,
 - and, for the medium, is in the list of usual mediums,
-- or when an admin accepted it for the website.
+- or when an admin marked it as correct for the website.
 
-Next to the score you see how it changed compared to the previous period ("+6 points compared to the previous
-period") and a small line with the score of the last eight periods. Below the score card, **Campaign Score over time**
-shows the score as a graph.
+Next to the score you see a verdict (good, needs work, poor), how it changed compared to the previous period ("+6
+points compared to the previous period"), a small line with the score of the last eight periods and, with Marketing
+Campaigns Reporting, a bar for campaign name, source and medium that shows where the points are lost. The card also
+counts the findings fixed since the previous period: those whose clean spelling is in use now. Below the score card,
+**Campaign Score over time** shows the score as a graph. *Send me the Campaign Score every week by email* creates a
+Matomo email report with the score and the findings; when the score fell by 5 points or more, the email opens with that
+news and marks the new findings.
 
-**The findings** list every problem with the campaign visits it affects, the largest first. Under each value you see
-where it occurs (campaign name, source and medium), and findings that were not there in the previous period are marked
-"new".
+**The findings** list every problem with the score points it costs, the most first: fix the top ones first. All points
+together add up to what the score misses (a visit with two problems counts half for each). Spelling variants show as
+small labels with their visits, the clean spelling marked. Under each value you see where it occurs (campaign name,
+source and medium), and findings that were not there in the previous period are marked "new". The labels above the
+table filter the findings by type. Rows without a suggestion say what to do.
 
 | Problem | What it means | Suggestion |
 |---|---|---|
@@ -94,13 +102,17 @@ Campaign keywords (`utm_term`, `mtm_kwd`) and content are only checked for spell
 terms or ad texts with spaces. With Marketing Campaigns Reporting, campaign group and placement are checked as well.
 Keyword, content, group and placement do not count in the score.
 
-**Rows of the findings table** have two actions when you move the mouse over them:
+**Rows of the findings table** have two actions when you move the mouse over them, and a button where there is no
+suggestion:
 
 - *Visits log* (Matomo's segmented visitor log) shows the visits with exactly these values, so you find the links that
   produce them.
-- *Accept value* (admins of the website): the value counts as clean from now on and no longer appears as a finding.
-  Matomo asks for confirmation first. Accepted values are listed in the website settings, where you can remove them
-  (at most 500 per website). An accepted value counts as clean in every field.
+- *Mark as correct* (admins of the website): the value counts as clean from now on and no longer appears as a finding.
+  Matomo asks for confirmation first. These values are listed in the website settings under *Values marked as correct*,
+  where you can remove them (at most 500 per website). Such a value counts as clean in every field.
+- *Add to usual mediums* (admins, for an unusual medium): the medium counts as usual for the website from now on, in its
+  clean spelling (Facebook Ads becomes facebook-ads). It is listed in the website settings under *Additional usual
+  mediums*.
 
 **Downloads** with the score card (only for a period with campaign visits):
 
@@ -129,18 +141,20 @@ value of your choice.
 
 - *Usual mediums*: one medium per line. The default list holds the mediums that the plugin Feinwerk Channel Grouping
   assigns to a channel (for example `cpc`, `email`, `social`, `display`, `affiliate`, `referral`), so both plugins
-  agree on what a clean medium is. Leave the field empty to go back to the default list.
+  agree on what a clean medium is; the whole default list is shown below the field. Empty the field and save to go back
+  to the default list.
 - *Separator in values*: either (only values that mix both are a finding), hyphen or underscore.
 - *Pattern for campaign names*: optional, a regular expression every campaign name should match, for example
   `^[0-9]{4}-` for names that start with a year.
 - *Recognise source aliases* and *Show possible typos*: both on by default.
 
 **Settings per website** (admins of the website, **Administration → Websites → Manage**, edit the website, section
-Feinwerk Campaign Score): *Accepted values*, and the website's own *Usual mediums*, *Separator* and *Pattern for
-campaign names*. Empty fields use the settings for all websites.
+Feinwerk Campaign Score): *Values marked as correct*, *Additional usual mediums* (added to the list that applies), and
+the website's own *Usual mediums*, *Separator* and *Pattern for campaign names*. Empty fields use the settings for all
+websites.
 
 Campaign Score changes no tracking data. It reads Matomo's existing campaign reports when you open the page, and it
-stores only your settings and accepted values.
+stores only your settings and the values you marked as correct.
 
 ## FAQ
 
@@ -191,18 +205,22 @@ switch the aliases off.
 
 - `FeinwerkCampaignScore.getScore`: the score in percent (`score`), the score of the previous period
   (`previous_score`, for a single period) and the basis (`clean_visits`, `checked_visits`, `campaign_visits`,
-  `unchecked_visits`), `with_source_medium` and the number of `findings`. For several periods (as in the score over
+  `unchecked_visits`), `with_source_medium`, the clean share of each field (`score_name`, `score_source`,
+  `score_medium`), the number of `findings` and the findings fixed since the previous period (`fixed_findings`). For several periods (as in the score over
   time) each period has the score and its basis, without `findings`: they are read for the score only, a few periods at
   a time.
-- `FeinwerkCampaignScore.getFindings`: one row per finding with `label` (the value or the spelling variants),
-  `nb_visits`, `type` (`variants`, `alias`, `format`, `unusual_medium`, `separator`, `pattern`, `incomplete`,
+- `FeinwerkCampaignScore.getFindings`: one row per finding, the most score points first, with `label` (the value or
+  the spelling variants), `nb_visits`, `score_gain` (the score points the finding costs; all together add up to what the
+  score misses), `type` (`variants`, `alias`, `format`, `unusual_medium`, `separator`, `pattern`, `incomplete`,
   `similar`), `field` (`name`, `keyword`, `source`, `medium`, `content`, `group`, `placement`), `suggestion`, `values`
-  (the visits per spelling), `contexts` (where the values occur), `new` and `segment`.
+  (the visits per spelling), `contexts` (where the values occur), `new` and `segment`. `findingType` filters by type
+  (comma separated).
 - `FeinwerkCampaignScore.getCorrections`: one row per value to fix with field, type, visits and suggestion.
 - `FeinwerkCampaignScore.getConvention`: the clean values as a starting convention (format
   `feinwerk-campaign-convention`, version 1).
 - `FeinwerkCampaignScore.getScoresForAllSites`: score, campaign visits and findings of every website you can view (at
-  most 100, those with the most visits), for one day, week, month or year (`period`, `date`, `segment`).
+  most 100, those with the most visits), for one day, week, month or year (`period`, `date`, `segment`); with
+  `withPreviousPeriod=1` also `previous_score` and `score_change`.
 - `FeinwerkCampaignScore.getRules`: the rules a website is checked by (`idSite` only): `separator`, `name_pattern` and
   `mediums`, each with its `value` and its `source` (`website`, `all_websites` or `default`), the `accepted_values` of the
   website, and whether `source_aliases` and `typo_hints` are on.
@@ -210,6 +228,12 @@ switch the aliases off.
   website only.
 - `FeinwerkCampaignScore.removeAcceptedValues`: takes accepted values back (`idSite`, `values`, one per line); admins of
   the website only.
+- `FeinwerkCampaignScore.addUsualMediums` and `removeUsualMediums`: add mediums to a website's usual mediums or take
+  them back (`idSite`, `values`; stored in the clean spelling, Facebook Ads becomes facebook-ads); admins of the website
+  only.
+- `FeinwerkCampaignScore.addEmailReport`: sends the user the score and the findings by email (`idSite`, `period` day,
+  week or month, default week), as a Matomo email report; once per user and website. A drop of 5 points or more leads
+  the email.
 
 Unless noted otherwise they take `idSite` (one website), `period` (`day`, `week`, `month`, `year` or `range`), `date`
 (`YYYY-MM-DD`, `today`, `yesterday`, a range `YYYY-MM-DD,YYYY-MM-DD`, or `lastN`/`previousN` for several periods) and an
@@ -226,7 +250,7 @@ Examples (add `&token_auth=...` or call them from within Matomo):
     index.php?module=API&method=FeinwerkCampaignScore.getScoresForAllSites&period=month&date=yesterday&format=json
     index.php?module=API&method=FeinwerkCampaignScore.getRules&idSite=1&format=json
 
-`acceptValues` and `removeAcceptedValues` take POST only, for example
+`acceptValues`, `removeAcceptedValues`, `addUsualMediums`, `removeUsualMediums` and `addEmailReport` take POST only, for example
 `module=API&method=FeinwerkCampaignScore.acceptValues&idSite=1&values=e-mail&dryRun=1` in the request body. With
 `dryRun=1` (or `true`) they save nothing and only report what would change; `dryRun` takes only `1`, `0`, `true` or
 `false`. They answer with the number of accepted values of the

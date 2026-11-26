@@ -70,9 +70,10 @@
     align-items: stretch;
 }
 
-/* straight in the widget, without Matomo's card around it: the same space above and below as Matomo's cards */
+/* straight in the widget, without Matomo's card around it: the same space below as Matomo's cards, none above (the
+   first card of a page starts at the top, UI review 2026-11-25 W5) */
 .theWidgetContent > .fwcs-split {
-    margin: 8px 0 16px;
+    margin: 0 0 16px;
 }
 
 /* when the rotation has nothing left or the place is paused (promocard.js removes the group): the score card takes the
@@ -132,7 +133,9 @@
 }
 
 .fwcs-split .fwcs-card__text {
-    max-width: 300px;
+    /* as wide as the score row above it, so both start at the same place (UI review 2026-11-26 W4) */
+    flex: 0 1 340px;
+    max-width: 340px;
 }
 
 .fwcs-split .fwcs-card__basis {

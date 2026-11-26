@@ -83,11 +83,15 @@ class GetAllSites extends Widget
         $sites = [];
         $error = null;
         $limited = null;
+        // the trend per website only on request: it reads every website twice (javascripts/allsites.js)
+        $compare = Common::getRequestVar('fwcs_compare', 0, 'int') === 1;
+        $hasScore = false;
         try {
             $table = Request::processRequest('FeinwerkCampaignScore.getScoresForAllSites', [
                 'period' => $period,
                 'date' => $date,
                 'segment' => $segment,
+                'withPreviousPeriod' => $compare ? 1 : 0,
             ], []);
             if ($table instanceof DataTable && $table->getMetadata('fwcs_sites_total') > $table->getMetadata('fwcs_sites_shown')) {
                 $limited = Piwik::translate(
@@ -97,6 +101,8 @@ class GetAllSites extends Widget
             }
             foreach ($table instanceof DataTable ? $table->getRows() : [] as $row) {
                 $score = $row->getColumn('score');
+                $hasScore = $hasScore || $score !== false;
+                $change = $row->getColumn('score_change');
                 $idSite = (int) $row->getMetadata('idsite');
                 $sites[] = [
                     'name' => (string) $row->getColumn('label'),
@@ -105,6 +111,8 @@ class GetAllSites extends Widget
                     'level' => $score === false ? '' : ((float) $score >= ScoreCard::GOOD_FROM ? 'good' : ((float) $score >= ScoreCard::OK_FROM ? 'ok' : 'poor')),
                     'visits' => $formatter->formatNumber((int) $row->getColumn('campaign_visits')),
                     'findings' => $formatter->formatNumber((int) $row->getColumn('findings')),
+                    'change' => $change === false ? '' : self::change((float) $change, $formatter),
+                    'changeDirection' => $change === false ? '' : ((float) $change > 0 ? 'up' : ((float) $change < 0 ? 'down' : 'same')),
                 ];
             }
         } catch (InvalidInputException | BadRequestException | \InvalidArgumentException $e) {
@@ -113,6 +121,34 @@ class GetAllSites extends Widget
             $error = Piwik::translate('FeinwerkCampaignScore_ErrorLoading');
         }
 
-        return $this->renderTemplate('_allSites', ['sites' => $sites, 'error' => $error, 'limited' => $limited]);
+        $compareUrl = null;
+        if (!$compare && $hasScore && $error === null) {
+            $query = [
+                'module' => 'FeinwerkCampaignScore',
+                'action' => 'getAllSites',
+                'idSite' => Common::getRequestVar('idSite', 0, 'int'),
+                'period' => $period,
+                'date' => $date,
+                'fwcs_load' => 1,
+                'fwcs_compare' => 1,
+            ];
+            $compareUrl = 'index.php?' . Url::getQueryStringFromParameters($query) . ($segment !== '' ? '&segment=' . $segment : '');
+        }
+
+        return $this->renderTemplate('_allSites', [
+            'sites' => $sites,
+            'error' => $error,
+            'limited' => $limited,
+            'compare' => $compare,
+            'compareUrl' => $compareUrl,
+        ]);
+    }
+
+    /** A change of the score in points: "+3", "-2" or "0", rounded to whole points like the scores. */
+    public static function change(float $points, NumberFormatter $formatter): string
+    {
+        $rounded = (int) round($points);
+
+        return ($rounded > 0 ? '+' : ($rounded < 0 ? '-' : '')) . $formatter->formatNumber(abs($rounded));
     }
 }

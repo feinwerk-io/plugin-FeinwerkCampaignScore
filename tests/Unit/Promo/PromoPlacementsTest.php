@@ -135,4 +135,15 @@ class PromoPlacementsTest extends TestCase
         $this->assertFalse(PromoPlacements::isAdminHome('dashboard', 'CoreHome', 'index'));
         $this->assertFalse(PromoPlacements::isAdminHome('login', null, null));
     }
+
+    /** The campaigns box follows the campaigns step: none (Campaign Manager connected) leaves the page without a box. */
+    public function test_no_campaigns_box_once_campaign_manager_is_connected(): void
+    {
+        $nothing = static function (): bool {
+            return false;
+        };
+        self::assertNull(PromoPlacements::messageFor('campaigns', $nothing, PromoLine::CAMPAIGNS_NONE));
+        self::assertSame('campaigns', PromoPlacements::messageFor('campaigns', $nothing, PromoLine::CAMPAIGNS_OPEN));
+        self::assertSame('sentinel', PromoPlacements::messageFor('goals', $nothing, PromoLine::CAMPAIGNS_NONE), 'other boxes stay');
+    }
 }

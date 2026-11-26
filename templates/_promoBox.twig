@@ -12,7 +12,7 @@
         <p class="fwpromo-box__title">{{ promo.title }}</p>
         <p class="fwpromo-box__text">{{ promo.text }}</p>
         <div class="fwpromo-box__foot">
-            <a class="fwpromo-box__link" href="{{ promo.url }}" target="_blank" rel="noopener">{{ promo.link }}</a>
+            <a class="fwpromo-box__link" href="{{ promo.url }}"{% if promo.external ?? true %} target="_blank" rel="noopener"{% endif %}>{{ promo.link }}</a>
             {% include '@FeinwerkCampaignScore/_feinwerkLogo.twig' %}
         </div>
     </div>

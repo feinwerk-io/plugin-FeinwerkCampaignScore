@@ -41,6 +41,9 @@ final class Finding
      * @param list<array{name: ?string, source: ?string, medium: ?string, visits: int}> $contexts where the values
      *        to fix occur: campaign name, source and medium, most visited first
      * @param bool $isNew not found in the previous period
+     * @param float $scoreGain score points (0 to 100) the finding accounts for: its share of the unclean visits (a visit
+     *        with two unclean fields counts half for each) over the checked visits; 0 for findings that do not lower
+     *        the score. The points of all findings add up to the points the score misses
      */
     public function __construct(
         public readonly string $type,
@@ -49,7 +52,8 @@ final class Finding
         public readonly int $visits,
         public readonly ?string $suggestion,
         public readonly array $contexts = [],
-        public readonly bool $isNew = false
+        public readonly bool $isNew = false,
+        public readonly float $scoreGain = 0.0
     ) {
     }
 
@@ -92,9 +96,9 @@ final class Finding
     /**
      * @param list<array{name: ?string, source: ?string, medium: ?string, visits: int}> $contexts
      */
-    public function with(array $contexts, bool $isNew): self
+    public function with(array $contexts, bool $isNew, float $scoreGain = 0.0): self
     {
-        return new self($this->type, $this->field, $this->values, $this->visits, $this->suggestion, $contexts, $isNew);
+        return new self($this->type, $this->field, $this->values, $this->visits, $this->suggestion, $contexts, $isNew, $scoreGain);
     }
 
     /**

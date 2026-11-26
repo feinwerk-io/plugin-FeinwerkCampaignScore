@@ -38,6 +38,7 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
             // a line with the score and the findings under Matomo's campaign names report (Peter, 2026-11-24: "D4 ja")
             // (Matomo's own hook for the line under the campaign names report, core and Marketing Campaigns Reporting)
             'Template.afterCampaignsReport' => 'addCampaignsFooter',
+            'ScheduledReports.processReports' => 'addScoreAlert',
         ];
     }
 
@@ -94,6 +95,34 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
         }
     }
 
+    /**
+     * Matomo's email reports: a score drop of 5 points or more leads the email, new findings are marked (Ui/ScoreAlert,
+     * Peter 2026-11-25). Only the email (not SMS), only the plugin's own sections; never breaks the email.
+     *
+     * @param array<int, array<string, mixed>> $processedReports
+     */
+    public function addScoreAlert(&$processedReports, $reportType = null, $outputType = null, $report = null)
+    {
+        try {
+            if ($reportType !== 'email' || !is_array($processedReports)) {
+                return;
+            }
+            $formatter = \Piwik\NumberFormatter::getInstance();
+            $processedReports = \Piwik\Plugins\FeinwerkCampaignScore\Ui\ScoreAlert::apply(
+                $processedReports,
+                [\Piwik\Piwik::class, 'translate'],
+                static function ($percent) use ($formatter): string {
+                    return (string) $formatter->formatPercent($percent, 0);
+                },
+                static function ($number) use ($formatter): string {
+                    return (string) $formatter->formatNumber($number);
+                }
+            );
+        } catch (\Throwable $e) {
+            // the email goes out as Matomo builds it
+        }
+    }
+
     /** @param array<string, string> $visualizations */
     public function useScoreEvolution(&$visualizations)
     {
@@ -135,13 +164,17 @@ class FeinwerkCampaignScore extends \Piwik\Plugin
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/scoresplit.js';
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/feedback.js';
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/accept.js';
+        $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/findings.js';
+        $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/emailreport.js';
         $jsFiles[] = 'plugins/FeinwerkCampaignScore/javascripts/allsites.js';
     }
 
     /** Texts of the row action "accept value" (javascripts/accept.js). */
     public function getClientSideTranslationKeys(&$translationKeys)
     {
-        foreach (['AcceptRowAction', 'AcceptRowActionTooltip', 'AcceptConfirm', 'AcceptConfirmText', 'AcceptFailed'] as $key) {
+        foreach (['AcceptRowAction', 'AcceptRowActionTooltip', 'AcceptConfirm', 'AcceptConfirmText', 'AcceptFailed',
+            'AddMediumConfirm', 'AddMediumConfirmAs', 'AddMediumConfirmText', 'AddMediumFailed', 'EmailReportManage', 'EmailReportDone',
+            'EmailReportFailed'] as $key) {
             $translationKeys[] = 'FeinwerkCampaignScore_' . $key;
         }
         // Matomo's own button labels of the accept dialog

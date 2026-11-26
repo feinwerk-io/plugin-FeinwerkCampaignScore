@@ -48,6 +48,11 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             static function (FieldConfig $field) {
                 $field->title = Piwik::translate('FeinwerkCampaignScore_SettingMediumsTitle');
                 $field->description = Piwik::translate('FeinwerkCampaignScore_SettingMediumsDescription');
+                // Matomo cuts the shown default after 50 characters: the whole list below the field (UI review W6)
+                $field->inlineHelp = htmlspecialchars(Piwik::translate('FeinwerkCampaignScore_SettingMediumsDefaultList', [
+                    count(MediumList::DEFAULTS),
+                    implode(', ', MediumList::DEFAULTS),
+                ]), ENT_QUOTES);
                 $field->uiControl = FieldConfig::UI_CONTROL_TEXTAREA;
             }
         );

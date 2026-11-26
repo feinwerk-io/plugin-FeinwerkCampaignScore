@@ -70,7 +70,8 @@ class ResultTablesTest extends TestCase
 
         $this->assertCount(3, $rows);
         // texts are metadata, not columns: Matomo sums all columns of a table for its totals row
-        $this->assertSame(['label' => '', 'nb_visits' => 60], $rows[0]->getColumns());
+        // score_gain: points this fix alone adds (the sample's findings carry none)
+        $this->assertSame(['label' => '', 'nb_visits' => 60, 'score_gain' => 0.0], $rows[0]->getColumns());
         $this->assertSame([
             'type' => 'incomplete',
             'field' => 'medium',
@@ -82,7 +83,7 @@ class ResultTablesTest extends TestCase
             'segment' => 'referrerType==campaign;campaignMedium==',
         ], $rows[0]->getMetadata());
         $this->assertSame(['Newsletter'], $rows[1]->getMetadata('accept'), 'the row action accepts the spellings to replace');
-        $this->assertSame(['label' => 'Newsletter, newsletter', 'nb_visits' => 50], $rows[1]->getColumns());
+        $this->assertSame(['label' => 'Newsletter, newsletter', 'nb_visits' => 50, 'score_gain' => 0.0], $rows[1]->getColumns());
         $this->assertSame('variants', $rows[1]->getMetadata('type'));
         $this->assertSame('newsletter', $rows[1]->getMetadata('suggestion'));
         $this->assertSame(['Newsletter' => 30, 'newsletter' => 20], $rows[1]->getMetadata('values'));
@@ -149,5 +150,19 @@ class ResultTablesTest extends TestCase
         ], [ResultTables::class, 'score']);
         $this->assertInstanceOf(DataTable\Map::class, $map);
         $this->assertSame(['2026-11-01', '2026-11-02'], array_keys($map->getDataTables()));
+    }
+
+    public function test_score_has_the_field_shares_and_the_fixed_findings(): void
+    {
+        $result = new Result(0.5, 1, 2, 2, 0, true, [], 0.4, ['name' => 1.0, 'source' => 0.754, 'medium' => null], 2);
+        $columns = ResultTables::score($result)->getFirstRow()->getColumns();
+        $this->assertSame(100.0, $columns['score_name']);
+        $this->assertSame(75.4, $columns['score_source']);
+        $this->assertArrayNotHasKey('score_medium', $columns, 'no visits, no share');
+        $this->assertSame(2, $columns['fixed_findings']);
+
+        $several = ResultTables::score($result, false)->getFirstRow()->getColumns();
+        $this->assertArrayNotHasKey('fixed_findings', $several, 'several periods: no comparison');
+        $this->assertSame(100.0, $several['score_name']);
     }
 }
