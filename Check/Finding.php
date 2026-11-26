@@ -24,16 +24,18 @@ final class Finding
     public const PATTERN = 'pattern';
     public const INCOMPLETE = 'incomplete';
     public const SIMILAR = 'similar';
+    /** a campaign name of digits only, such as an ad platform's campaign ID: says nothing in reports (Peter, 2026-11-26) */
+    public const NUMERIC = 'numeric';
 
     /** the order of the types when two findings have the same visits */
     public const TYPES = [
         self::INCOMPLETE, self::VARIANTS, self::ALIAS, self::UNUSUAL_MEDIUM, self::FORMAT, self::SEPARATOR,
-        self::PATTERN, self::SIMILAR,
+        self::PATTERN, self::NUMERIC, self::SIMILAR,
     ];
 
     /** types whose values count as not clean in the score (a typo hint is only a hint) */
     public const SCORED = [
-        self::VARIANTS, self::ALIAS, self::UNUSUAL_MEDIUM, self::FORMAT, self::SEPARATOR, self::PATTERN,
+        self::VARIANTS, self::ALIAS, self::UNUSUAL_MEDIUM, self::FORMAT, self::SEPARATOR, self::PATTERN, self::NUMERIC,
     ];
 
     /**

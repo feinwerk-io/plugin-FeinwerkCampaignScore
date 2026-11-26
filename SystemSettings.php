@@ -36,6 +36,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     /** @var Setting */
     public $typoHints;
 
+    /** @var Setting */
+    public $numericNames;
+
     protected function init()
     {
         // the same heading in every language, never translated (house rule)
@@ -102,6 +105,18 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             static function (FieldConfig $field) {
                 $field->title = Piwik::translate('FeinwerkCampaignScore_SettingTypoHintsTitle');
                 $field->description = Piwik::translate('FeinwerkCampaignScore_SettingTypoHintsDescription');
+                $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
+            }
+        );
+
+        // campaign names of digits only are findings (Peter, 2026-11-26); off for teams that name campaigns by ID
+        $this->numericNames = $this->makeSetting(
+            'numericNames',
+            true,
+            FieldConfig::TYPE_BOOL,
+            static function (FieldConfig $field) {
+                $field->title = Piwik::translate('FeinwerkCampaignScore_SettingNumericNamesTitle');
+                $field->description = Piwik::translate('FeinwerkCampaignScore_SettingNumericNamesDescription');
                 $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
             }
         );

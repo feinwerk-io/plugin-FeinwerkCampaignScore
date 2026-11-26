@@ -93,7 +93,7 @@ class API extends \Piwik\Plugin\API
      * accounts for: its share of the visits that are not clean, a visit with two problems counting half for each, so
      * the score_gain of all findings adds up to 100 minus the score; 0 for typo hints and for keyword, content, group
      * and placement, which are not scored). Fix the findings with the highest score_gain first. Row metadata: type (variants, alias, format, unusual_medium,
-     * separator, pattern, incomplete, similar), field (name, keyword, source, medium, content, group, placement),
+     * separator, pattern, numeric, incomplete, similar), field (name, keyword, source, medium, content, group, placement),
      * suggestion (the clean value, empty where none can be given), values (value => visits), contexts (campaign name,
      * source and medium where the values occur), new (1: not in the previous period), accept (the values an admin can
      * accept with acceptValues) and segment (a segment for exactly these visits, for the Visits Log).
@@ -104,7 +104,8 @@ class API extends \Piwik\Plugin\API
      *                     for several periods of the same kind lastN or previousN (then one result per period)
      * @param string|false $segment a Matomo segment definition (URL-encoded) to check only those visits; default false: all visits
      * @param string $findingType only findings of these types, separated by commas: variants, alias, format,
-     *                            unusual_medium, separator, pattern, incomplete, similar; default '': all findings.
+     *                            unusual_medium, separator, pattern, numeric, incomplete, similar; default '': all
+     *                            findings.
      *                            Another value answers with HTTP 400
      * @return DataTable|DataTable\Map one table for a single period; a Map keyed by period for several periods
      */
@@ -574,8 +575,8 @@ class API extends \Piwik\Plugin\API
      * @return array<string, mixed> separator {value: any, hyphen or underscore; source}, name_pattern {value: a regular
      *         expression without delimiters, or null; source}, mediums {value: the usual mediums in force, lowercase, the
      *         additional ones included; source: of the base list}, additional_mediums (list, website only, see
-     *         addUsualMediums), accepted_values (list, website only), source_aliases and typo_hints (true or false, all
-     *         websites).
+     *         addUsualMediums), accepted_values (list, website only), source_aliases, typo_hints and numeric_names (true
+     *         or false, all websites; numeric_names: campaign names of digits only are findings).
      *         source is website, all_websites or default
      */
     public function getRules($idSite)

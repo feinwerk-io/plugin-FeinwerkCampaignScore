@@ -22,6 +22,17 @@ final class ValueRules
         return (string) preg_replace('/[\s_.\-]+/u', '', mb_strtolower($value, 'UTF-8'));
     }
 
+    /**
+     * Whether a value is made of digits only (separators and spaces allowed, no letter in any script), such as "12345"
+     * or "2026-11"; HTML entities are decoded first.
+     */
+    public static function isNumericOnly(string $value): bool
+    {
+        $value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return preg_match('/\d/u', $value) === 1 && preg_match('/\p{L}/u', $value) === 0;
+    }
+
     public static function isClean(string $value): bool
     {
         return preg_match('/^[a-z0-9_.\-]+$/D', $value) === 1;

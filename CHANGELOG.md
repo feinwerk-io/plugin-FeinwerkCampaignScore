@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.4.0
+
+- Campaign names made only of digits, such as "12345" or an ad platform's campaign ID, are a finding ("Number only") and lower the score. Switch it off in the settings for all websites if your team names campaigns by ID on purpose.
+- API: the finding type `numeric` (also as `findingType`), and `getRules` reports `numeric_names`.
+
 ## 6.3.0
 
 - Every finding shows how many score points it costs, and the findings are sorted by them: fix the top ones first. All points together add up to what the score misses.

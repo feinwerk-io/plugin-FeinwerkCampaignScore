@@ -25,6 +25,7 @@ final class FindingTexts
         Finding::FORMAT => 'FeinwerkCampaignScore_TypeFormat',
         Finding::SEPARATOR => 'FeinwerkCampaignScore_TypeSeparator',
         Finding::PATTERN => 'FeinwerkCampaignScore_TypePattern',
+        Finding::NUMERIC => 'FeinwerkCampaignScore_TypeNumeric',
         Finding::SIMILAR => 'FeinwerkCampaignScore_TypeSimilar',
     ];
 
@@ -112,6 +113,9 @@ final class FindingTexts
         }
         if ($type === Finding::SIMILAR) {
             return $translate('FeinwerkCampaignScore_HintSimilar');
+        }
+        if ($type === Finding::NUMERIC) {
+            return $translate('FeinwerkCampaignScore_HintNumeric');
         }
         return $translate('FeinwerkCampaignScore_HintChangeInLinks');
     }

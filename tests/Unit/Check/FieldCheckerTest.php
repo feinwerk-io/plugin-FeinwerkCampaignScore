@@ -82,7 +82,13 @@ class FieldCheckerTest extends TestCase
 
     public function test_numericValuesAndEmptyValues_areHandled(): void
     {
-        $this->assertSame([], FieldChecker::check('name', [2026 => 4, '' => 9]));
+        // PHP turns the key "2026" into an integer; since 2026-11-26 a name of digits only is a finding (Peter)
+        $findings = FieldChecker::check('name', [2026 => 4, '' => 9]);
+        $this->assertCount(1, $findings);
+        $this->assertSame([Finding::NUMERIC, ['2026' => 4]], [$findings[0]->type, $findings[0]->values]);
+        $this->assertSame([], FieldChecker::check('name', [2026 => 4], new \Piwik\Plugins\FeinwerkCampaignScore\Check\Convention(
+            \Piwik\Plugins\FeinwerkCampaignScore\Check\MediumList::defaults(), [], 'any', null, true, true, false
+        )), 'switched off');
     }
 
     public function test_findings_areSortedByVisits(): void

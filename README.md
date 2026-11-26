@@ -96,6 +96,7 @@ table filter the findings by type. Rows without a suggestion say what to do.
 | Separator | A value with the other separator than your convention, or one that mixes hyphen and underscore, such as "black-friday_2026". | The value with the right separator |
 | Outside the pattern | A campaign name that does not match the pattern of your convention. | Rename it to fit the pattern |
 | Missing value | Campaign visits without a campaign name, source or medium (with Marketing Campaigns Reporting). | Add the missing parameter to the links |
+| Number only | A campaign name made only of digits, such as "12345" or an ad platform's campaign ID. It says nothing in your reports. Can be switched off in the settings for all websites. | Use a readable campaign name |
 | Possible typo | Two values that differ by one or two letters, such as "newsleter" and "newsletter". A hint only: it does not lower the score. | The more visited value |
 
 Campaign keywords (`utm_term`, `mtm_kwd`) and content are only checked for spelling variants: they often hold search
@@ -147,6 +148,8 @@ value of your choice.
 - *Pattern for campaign names*: optional, a regular expression every campaign name should match, for example
   `^[0-9]{4}-` for names that start with a year.
 - *Recognise source aliases* and *Show possible typos*: both on by default.
+- *Campaign names with numbers only are findings*: on by default; switch it off when your team names campaigns by ID on
+  purpose.
 
 **Settings per website** (admins of the website, **Administration → Websites → Manage**, edit the website, section
 Feinwerk Campaign Score): *Values marked as correct*, *Additional usual mediums* (added to the list that applies), and
@@ -211,8 +214,8 @@ switch the aliases off.
   a time.
 - `FeinwerkCampaignScore.getFindings`: one row per finding, the most score points first, with `label` (the value or
   the spelling variants), `nb_visits`, `score_gain` (the score points the finding costs; all together add up to what the
-  score misses), `type` (`variants`, `alias`, `format`, `unusual_medium`, `separator`, `pattern`, `incomplete`,
-  `similar`), `field` (`name`, `keyword`, `source`, `medium`, `content`, `group`, `placement`), `suggestion`, `values`
+  score misses), `type` (`variants`, `alias`, `format`, `unusual_medium`, `separator`, `pattern`, `numeric`,
+  `incomplete`, `similar`), `field` (`name`, `keyword`, `source`, `medium`, `content`, `group`, `placement`), `suggestion`, `values`
   (the visits per spelling), `contexts` (where the values occur), `new` and `segment`. `findingType` filters by type
   (comma separated).
 - `FeinwerkCampaignScore.getCorrections`: one row per value to fix with field, type, visits and suggestion.
